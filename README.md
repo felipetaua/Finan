@@ -4,6 +4,9 @@
 
    Educação financeira   
 
+   -- organizando as informações do projeto
+   
+
 ### **Sobre**
 
 O Finan é uma plataforma de controle financeiro e educação financeira integrada, que combina gestão prática do dinheiro com trilhas gamificadas de aprendizado, incentivando o uso contínuo do aplicativo mesmo em períodos sem movimentações financeiras.
