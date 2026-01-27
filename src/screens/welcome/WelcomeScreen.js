@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image } from 'react-native';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 
-function WelcomeScreen({ navigation }) {
+export default function WelcomeScreen({ navigation }) {
     return (
         <View style={styles.container}>
             <Image
@@ -19,7 +19,7 @@ function WelcomeScreen({ navigation }) {
                 </Text>
 
                 <Button
-                    onPress={() => navigation.navigate('SignUp')} 
+                    onPress={() => navigation.navigate('StepScreen1')} 
                     title="Iniciar" 
                     type='primary'
                 />
@@ -66,5 +66,3 @@ const styles = StyleSheet.create({
         lineHeight: 24,
     },
 });
-
-export default WelcomeScreen;
