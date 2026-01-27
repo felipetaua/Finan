@@ -2,25 +2,21 @@ import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import BottomTabNavigator from '../navigation/BottomTabNavigator';
+import AuthStackNavigator from '../navigation/AuthStackNavigator';
 import SplashScreen from './splash/SplashScreen';
-import WelcomeScreen from './welcome/WelcomeScreen';
 
 export default function AppNavigation() {
     const [isLoading, setIsLoading] = useState(true);
-    const [showWelcome, setShowWelcome] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     if (isLoading) {
         return <SplashScreen onFinish={() => setIsLoading(false)} />;
     }
 
-    if (showWelcome) {
-        return <WelcomeScreen onFinish={() => setShowWelcome(false)} />;
-    }
-
     return (
         <NavigationContainer>
-        <BottomTabNavigator />
-        <StatusBar style="auto" />
+            {isAuthenticated ? <BottomTabNavigator /> : <AuthStackNavigator />}
+            <StatusBar style="auto" />
         </NavigationContainer>
     );
 }
