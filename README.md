@@ -1,342 +1,56 @@
-# Documentação
+# Finan — Gestão & Educação Financeira Gamificada
 
-   **Plataforma de Aprendizado**   
+![GitHub repo size](https://img.shields.io/github/repo-size/Finan/finan?style=for-the-badge)
+![GitHub language count](https://img.shields.io/github/languages/count/Finan/finan?style=for-the-badge&color=brightgreen)
+![Status](https://img.shields.io/badge/STATUS-EM%20DESENVOLVIMENTO-orange?style=for-the-badge)
+![Plataforma](https://img.shields.io/badge/PLATFORMA-MOBILE-blue?style=for-the-badge&logo=react)
 
-   Educação financeira   
+**Finan** é uma plataforma que integra controle financeiro prático com uma trilha de educação gamificada. O objetivo é transformar a gestão do dinheiro em uma experiência contínua de aprendizado, incentivando o usuário a evoluir sua saúde financeira mesmo em períodos sem movimentações.
 
-   -- organizando as informações do projeto
-   
 
-### **Sobre**
 
-O Finan é uma plataforma de controle financeiro e educação financeira integrada, que combina gestão prática do dinheiro com trilhas gamificadas de aprendizado, incentivando o uso contínuo do aplicativo mesmo em períodos sem movimentações financeiras.
+## 🎯 Sobre o Projeto
 
-### Problema que resolve
+O diferencial do Finan é a **Trilha de Aprendizado**, inspirada em plataformas de sucesso como o Duolingo. Enquanto gerenciadores tradicionais focam apenas em dados, o Finan foca no comportamento e no conhecimento do usuário.
 
-Muitas pessoas não sabem exatamente para onde seu dinheiro está indo, dificultando o controle financeiro e a tomada de decisões.
+### Problemas que resolvemos:
+* **Desengajamento:** Evita que o usuário abandone o app por falta de hábito.
+* **Falta de instrução:** Ensina o que fazer com o dinheiro enquanto ele é registrado.
+* **Complexidade:** Substitui planilhas densas por uma interface clara e intuitiva.
 
-### Público-alvo
 
-- Jovens e adultos
-- Pouco ou médio conhecimento financeiro
-- Uso pessoal, recorrente
 
-### Objetivo do MVP .
+## 🚀 Funcionalidades Principais
 
-Explicação mais detalhada do protótipo inicial abaixo:
+### 🎮 Trilha de Aprendizado (Gamificação)
+* **Níveis Progressivos:** Lições que integram teoria e prática real.
+* **Progresso Visual:** Indicadores de evolução e feedback contínuo.
+* **Engajamento:** Sistema que premia a constância e o aprendizado.
 
-[MVP](https://www.notion.so/MVP-2e07639e4aff80a78a1de0bbef7bec38?pvs=21)
+### 💰 Gestão Financeira
+* **Fluxo de Caixa:** Registro simplificado de receitas, despesas e transferências.
+* **Atalho Universal:** Botão centralizado para inserção rápida de dados sem fricção.
+* **Dashboard:** Visualização clara de saldos, históricos e categorias.
 
-### O que é a Trilha de Aprendizado
 
-A Trilha de Aprendizado Financeiro do Finan é um sistema gamificado inspirado em plataformas como Duolingo, que guia o usuário por níveis progressivos de educação financeira, integrando teoria, prática e uso real do aplicativo.
 
-Explicação detalhada da Trilha de Aprendizado, abaixo:
+## 🛠 Stack Tecnológica
 
-[Trilha do Aprendizado](https://www.notion.so/Trilha-do-Aprendizado-2e07639e4aff80b59793e9fc17d6b462?pvs=21)
+* **Front-end:** ![React Native](https://img.shields.io/badge/React_Native-20232A?style=flat-square&logo=react&logoColor=61DAFB) ![Expo](https://img.shields.io/badge/Expo-000020?style=flat-square&logo=expo&logoColor=white)
+* **Design:** ![Figma](https://img.shields.io/badge/Figma-F24E1E?style=flat-square&logo=figma&logoColor=white)
+* **Backend:** ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=black)
 
-### Fluxo Principal do Usuário
 
-1. Usuário cria conta ou faz login
-2. Acessa o Painel Principal
-3. Registra receitas e despesas
-4. Visualiza saldo e histórico
-5. Opcionalmente acessa a área de assinatura (não funcional ainda)
 
-### Design e UX da Plataforma
+## 📈 Estratégia de Negócio
 
-### Princípios de UX
+O Finan adota um modelo de monetização híbrido para garantir sustentabilidade:
+1. **Assinaturas (Premium):** Desbloqueio de relatórios avançados e customização total.
+2. **Anúncios:** Monetização da base gratuita com anúncios discretos.
+3. **Afiliados:** Indicação de produtos financeiros (cartões e investimentos) baseada no perfil.
 
-- Clareza
-- Simplicidade
-- Leitura rápida
-- Poucos cliques
 
-### Ferramenta
+## 📄 Licença
 
-- Figma (UI/UX)
-- (algum editor de imagens)
+Este projeto está sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE) para mais detalhes.
 
-### Organização
-
-- Wireframes
-- Design System
-- Telas do MVP
-- Fluxos
-- Protótipo navegável
-
-### Arquitetura e Stack Tecnológica
-
-### Front-end
-
-- React Native
-- Expo
-- Organização por features
-
-### Back-end
-
-- (definir autenticação Firebase)
-- API simples
-- Autenticação
-
-### Banco de Dados
-
-- (decidir)
-- Estrutura orientada a usuário
-- Transações financeiras
-
-### **Funcionalidades**
-
-Principais funcionalidades do app:
-
-Navegação App
-
-```jsx
-[ Trilha] [ Controle ] [  +  ] [ Investir ] [ Perfil ]
-```
-
-### **Trilha (home)**
-
-- Trilha de aprendizado
-- Progresso
-- Próxima lição
-- Feedback de evolução
-- Porta de entrada do usuário
-
-### Controle
-
-**Vida financeira prática, o que ele aprende aplica.**
-
-- Gastos
-- Receitas
-- Transferências
-- Categorias
-- Histórico
-
-### Botão de ação
-
-**Atalho universal, precisa ser r**ápido e sem fricção.
-
-Abre um bottom sheet:
-
-- Adicionar gasto
-- Adicionar receita
-- Adicionar investimento
-
-### Investir / Análises *(fora do MVP)*
-
-Para o MVP:
-
-- pode estar oculto
-- ou exibido como “Em breve”
-- ou versão básica (carteira simples)
-- No futuro:
-    - carteira de investimentos
-    - análises
-    - gráficos
-    - relatórios
-    - insights inteligentes
-
-### Perfil
-
-**Identidade e controle do usuário,** monetização **de forma natural**
-
-- Dados pessoais
-- Plano (Free / Premium)
-- Progresso geral
-- Configurações
-- Sobre o app
-
-### **Estrutura de Pastas**
-
-Foi criado uma estrutura de pastas padrão para o aplicativo para seguir os mesmos padrões de desenvolvimento.
-
-### Esqueleto da arvore de arquivos
-
-src/
-├── app/
-│   ├── routes.jsx
-│   ├── App.jsx
-│   └── ProtectedRoute.jsx
-│
-├── features/
-│   ├── auth/
-│   │   ├── auth.service.js
-│   │   ├── auth.context.jsx
-│   │   └── useAuth.js
-│   │
-│   ├── finance/
-│   │   ├── components/
-│   │   │   ├── BalanceCard.jsx
-│   │   │   ├── TransactionList.jsx
-│   │   │   └── TransactionItem.jsx
-│   │   │
-│   │   ├── pages/
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── Expenses.jsx
-│   │   │   └── Income.jsx
-│   │   │
-│   │   ├── finance.service.js
-│   │   └── finance.utils.js
-│   │
-│   ├── subscription/
-│   │   ├── SubscriptionPage.jsx
-│   │   ├── Paywall.jsx
-│   │   ├── subscription.service.js
-│   │   └── useSubscription.js
-│   │
-│   └── profile/
-│       ├── ProfilePage.jsx
-│       └── profile.service.js
-│
-├── components/
-│   ├── Button.jsx
-│   ├── Input.jsx
-│   ├── Modal.jsx
-│   └── Loader.jsx
-│
-├── layouts/
-│   ├── AuthLayout.jsx
-│   ├── AppLayout.jsx
-│   └── SubscriptionLayout.jsx
-│
-├── services/
-│   ├── api.js
-│   ├── firebase.js
-│   └── storage.js
-│
-├── hooks/
-│   └── useLocalStorage.js
-│
-├── styles/
-│   ├── global.css
-│   └── theme.js
-│
-├── utils/
-│   ├── formatCurrency.js
-│   ├── dates.js
-│   └── validators.js
-│
-└── main.jsx
-
-[Estrutura de Pastas - Detalhes](https://www.notion.so/Estrutura-de-Pastas-Detalhes-2d97639e4aff8056b637f7c0f40c71cb?pvs=21)
-
-### **Métodos de Pagamento**
-
-Plataformas escolhidas para cuidar do pagamento do projeto:
-
-Sistema de Assinaturas - (Gateaway de pagamento);
-
-Anúncios - Google Ads;
-
-venda de Produtos - Programa de afiliado Mercado Pago, Shopee.
-
-### **Modelo de Monetização(não será implementado ainda)**
-
-O Finan adota um modelo de monetização híbrido, combinando assinatura, anúncios e parcerias estratégicas, priorizando sempre a experiência do usuário e a entrega de valor contínuo.
-
-### Plano de Assinatura - Principal
-
-### O que é
-
-Usuário paga mensal/anualmente para desbloquear recursos avançados.
-
-### Exemplo de planos
-
-- **Free**
-- **Premium**
-
-### Funcionalidades Premium (exemplos)
-
-- Relatórios avançados
-- Histórico ilimitado
-- Categorias personalizadas
-- Exportação de dados
-- Sem anúncios
-
-### Onde entra no app
-
-- Tela de assinatura
-- Paywall ao acessar recursos premium
-
-### Por que faz sentido
-
-- Receita recorrente
-- Alinhado com uso contínuo
-- Previsível financeiramente
-
-### Anúncios - Complementar
-
-### O que é
-
-Exibição de anúncios para usuários Free.
-
-### Onde usar (com cuidado)
-
-- Tela de lista de transações
-- Dashboard (banner discreto)
-- Tela de insights simples
-
-Nunca:
-
-- durante cadastro
-- em formulários
-- em momentos críticos
-
-### Por que faz sentido
-
-- Monetiza usuários que não pagam
-- Não bloqueia acesso total
-- Incentiva upgrade para Premium
-
-### Afiliados
-
-### O que é
-
-Recomendação de produtos financeiros com comissão.
-
-Exemplos:
-
-- contas digitais
-- cartões
-- plataformas de investimento
-- cursos financeiros
-
-### Onde entra no app
-
-- Área de educação financeira
-- Sugestões baseadas em comportamento
-- Seção “Recomendações”
-
-### Por que faz sentido
-
-- Receita sem custo direto
-- Valor agregado ao usuário
-- Escala bem
-
-### Decisões Técnicas e Restrições
-
-Escolhas feitas para conseguir entregar o projeto de forma mais fácil:
-
-Uso de Expo para reduzir complexidade;
-
-Escopo reduzido para garantir entrega;
-
-Sem uso de libs avançadas no MVP.
-
-### Organização do Time
-
-Definindo os cargos dos integrantes de cada setor:
-
-- Coordenação Técnica   |   Desenvolvedor Fullstack
-    1. Tauã Felipe
-- Front-end React
-    1. Leonardo
-    2. João
-- Banco de Dados
-    1. Jeferson Guimarrães
-    2. Gabriel 
-- Back-end
-    1. Otávio
-- Design e Marketing
-    1. Igor Martello
