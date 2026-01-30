@@ -56,3 +56,5 @@ O Finan adota um modelo de monetização híbrido para garantir sustentabilidade
 
 Este projeto está sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE) para mais detalhes.
 
+*Para documentação detalhada sobre arquitetura, design e regras de negócio, acesse a nossa [Wiki](https://github.com/seu-usuario/finan/wiki).*
+
