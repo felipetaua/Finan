@@ -2,7 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View, Image } from 'react-native';
 import { theme } from '../../theme/theme';
 
-const SelectableOption = ({ title, icon, isSelected, onPress }) => {
+const SelectableOption = ({ title, icon, isSelected, onPress, frequency }) => {
     return (
         <TouchableOpacity 
             activeOpacity={0.7}
@@ -32,6 +32,15 @@ const SelectableOption = ({ title, icon, isSelected, onPress }) => {
             ]}>
                 {title}
             </Text>
+
+            {frequency && (
+                <Text style={[
+                    styles.frequencyText,
+                    isSelected && styles.selectedFrequencyText
+                ]}>
+                    {frequency}
+                </Text>
+            )}
         </TouchableOpacity>
     );
 };
@@ -85,6 +94,15 @@ const styles = StyleSheet.create({
     selectedText: {
         color: theme.colors.primary,
         fontWeight: '600',
+    },
+    frequencyText: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        opacity: 0.7,
+    },
+    selectedFrequencyText: {
+        color: theme.colors.primary,
+        fontWeight: '500',
     }
 });
 
