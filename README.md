@@ -1,6 +1,6 @@
 # <img width="1280" height="832" alt="MacBook Air - 2" src="https://github.com/user-attachments/assets/ed42f00f-2a6d-434f-bdff-31f5d653ca0f" />
 
-Finan — Gestão & Educação Financeira Gamificada
+Gestão & Educação Financeira Gamificada
 
 ![GitHub repo size](https://img.shields.io/github/repo-size/felipetaua/finan?style=for-the-badge)
 ![GitHub language count](https://img.shields.io/github/languages/count/felipetaua/finan?style=for-the-badge&color=brightgreen)
