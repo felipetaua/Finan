@@ -1,7 +1,7 @@
 # Finan — Gestão & Educação Financeira Gamificada
 
-![GitHub repo size](https://img.shields.io/github/repo-size/Finan/finan?style=for-the-badge)
-![GitHub language count](https://img.shields.io/github/languages/count/Finan/finan?style=for-the-badge&color=brightgreen)
+![GitHub repo size](https://img.shields.io/github/repo-size/felipetaua/finan?style=for-the-badge)
+![GitHub language count](https://img.shields.io/github/languages/count/felipetaua/finan?style=for-the-badge&color=brightgreen)
 ![Status](https://img.shields.io/badge/STATUS-EM%20DESENVOLVIMENTO-orange?style=for-the-badge)
 ![Plataforma](https://img.shields.io/badge/PLATFORMA-MOBILE-blue?style=for-the-badge&logo=react)
 
