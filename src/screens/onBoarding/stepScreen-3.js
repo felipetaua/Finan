@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: 18,
+        
         paddingTop: 60,
     },
     imageScreen: {
@@ -71,6 +71,7 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         width: '100%',
+        paddingHorizontal: 18,
     },
     title: {
         fontSize: theme.fontSizes.xl,
@@ -83,7 +84,10 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
     },
     footer: {
+        borderTopColor: '#E5E7EB',
+        borderTopWidth: 1,
         paddingVertical: 20,
         backgroundColor: '#FFFFFF',
+        paddingHorizontal: 18,
     }
 });

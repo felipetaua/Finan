@@ -6,16 +6,20 @@ import Button from '../../components/common/Button';
 export default function StepScreen2({ navigation }) {
     return (
         <View style={styles.container}>
-            <Image 
-                source={require('../../assets/images/fin-2.png')}
-                style={styles.imageScreen}
-            />
-            <Text>StepScreen2</Text>
-            <Button  
-                onPress={() => navigation.navigate('StepScreen3')} 
-                title="Continuar" 
-                type='primary'
-            />
+            <View style={styles.content}>
+                <Image 
+                    source={require('../../assets/images/fin-2.png')}
+                    style={styles.imageScreen}
+                />
+                <Text>Vamos começar a sua mudança - StepScreen2</Text>
+            </View>
+            <View style={styles.footer}>
+                <Button  
+                    onPress={() => navigation.navigate('StepScreen3')} 
+                    title="Continuar" 
+                    type='primary'
+                />
+            </View>
         </View>
     );
 }
@@ -24,6 +28,11 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+        paddingTop: 60,
+    },
+    content: {
+        flex: 1,
+        width: '100%',
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 18,
@@ -32,5 +41,12 @@ const styles = StyleSheet.create({
         width: 170, 
         height: "45%",
         resizeMode: 'contain',
+    },
+    footer: {
+        borderTopColor: '#E5E7EB',
+        borderTopWidth: 1,
+        paddingVertical: 20,
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 18,
     }
 });
