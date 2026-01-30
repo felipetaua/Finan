@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import SelectableOption from '../../components/common/SelectableOption';
+import OnboardingHeader from '../../components/common/OnboardingHeader';
 
 export default function StepScreen3({ navigation }) {
     const [selectedOption, setSelectedOption] = useState(null);
@@ -18,6 +19,11 @@ export default function StepScreen3({ navigation }) {
 
     return (
         <View style={styles.container}>
+            <OnboardingHeader 
+                currentStep={3} 
+                totalSteps={5} 
+                onBack={() => navigation.goBack()} 
+            />
             <Image 
                 source={require('../../assets/images/fin-3.png')}
                 style={styles.imageScreen}
@@ -58,7 +64,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
-        
         paddingTop: 60,
     },
     imageScreen: {

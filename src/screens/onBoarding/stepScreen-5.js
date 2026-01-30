@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, SafeArea, ScrollView} from 'react-native
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import SelectableOption from '../../components/common/SelectableOption';
-import { use } from 'react';
+import OnboardingHeader from '../../components/common/OnboardingHeader';
 
 
 export default function StepScreen5({ navigation }) {
@@ -19,13 +19,18 @@ export default function StepScreen5({ navigation }) {
 
     return (
         <View style={styles.container}>
+            <OnboardingHeader 
+                currentStep={5} 
+                totalSteps={5} 
+                onBack={() => navigation.goBack()} 
+            />
             <Image 
                 source={require('../../assets/images/fin-3.png')}
                 style={styles.imageScreen}
             />
             
             <View style={styles.content}>
-                <Text style={styles.title}>Como conheceu o Finan?</Text>
+                <Text style={styles.title}>Qual é o seu objetivo principal?</Text>
                 
                 <ScrollView 
                     showsVerticalScrollIndicator={false}
@@ -45,8 +50,8 @@ export default function StepScreen5({ navigation }) {
 
             <View style={styles.footer}>
                 <Button  
-                    onPress={() => navigation.navigate('login')} 
-                    title="Continuar" 
+                    onPress={() => navigation.navigate('Login')} 
+                    title="Finalizar" 
                     type='primary'
                     disabled={!selectedOption}
                 />

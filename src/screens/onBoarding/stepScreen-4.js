@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, SafeArea, ScrollView} from 'react-native
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import SelectableOption from '../../components/common/SelectableOption';
+import OnboardingHeader from '../../components/common/OnboardingHeader';
 
 
 export default function StepScreen4({ navigation }) {
@@ -17,6 +18,11 @@ export default function StepScreen4({ navigation }) {
 
     return (
         <View style={styles.container}>
+            <OnboardingHeader 
+                currentStep={4} 
+                totalSteps={5} 
+                onBack={() => navigation.goBack()} 
+            />
             <Image 
                 source={require('../../assets/images/fin-3.png')}
                 style={styles.imageScreen}

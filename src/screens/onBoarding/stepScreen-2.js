@@ -2,10 +2,16 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, SafeArea} from 'react-native';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
+import OnboardingHeader from '../../components/common/OnboardingHeader';
 
 export default function StepScreen2({ navigation }) {
     return (
         <View style={styles.container}>
+            <OnboardingHeader 
+                currentStep={2} 
+                totalSteps={5} 
+                onBack={() => navigation.goBack()} 
+            />
             <View style={styles.content}>
                 <Image 
                     source={require('../../assets/images/fin-2.png')}
