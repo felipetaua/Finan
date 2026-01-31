@@ -53,13 +53,14 @@ const styles = StyleSheet.create({
         paddingBottom: 25,
     },
     title: {
+        fontFamily: theme.fonts.title,
         fontSize: theme.fontSizes.xxxl,
-        fontWeight: 'bold',
         textAlign: 'left',
         marginBottom: 16,
         lineHeight: 50,
     },
     subtitle: {
+        fontFamily: theme.fonts.regular,
         fontSize: theme.fontSizes.md,
         textAlign: 'left',
         marginBottom: 24,
