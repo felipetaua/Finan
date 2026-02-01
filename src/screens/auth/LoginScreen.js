@@ -1,11 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Button } from '../../components/common/Button'
 
-const LoginScreen = () => {
+export default function LoginScreen ({navigation}) {
     return (
         <View style={styles.container}>
         <Text style={styles.title}>login page</Text>
         <Text style={styles.subtitle}>crie contas</Text>
+        <Button
+            onPress={() => navigation.navigate('Home')} 
+            title="Entrar" 
+            type='secondary'
+        />
         </View>
     );
 };
@@ -28,5 +34,3 @@ const styles = StyleSheet.create({
         color: '#6B7280',
     },
 });
-
-export default LoginScreen;
