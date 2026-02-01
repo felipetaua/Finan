@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FontAwesome6, MaterialCommunityIcons } from '@expo/vector-icons';
+import { theme } from '../../theme/theme';
 
 const TrailNode = ({ node }) => {
     const isLocked = node.status === 'locked';
@@ -41,7 +42,7 @@ const TrailNode = ({ node }) => {
 const styles = StyleSheet.create({
     nodeContainer: {
         alignItems: 'center',
-        marginBottom: 40,
+        marginBottom: theme.spacing.xxl,
     },
     node: {
         width: 70,
@@ -59,13 +60,13 @@ const styles = StyleSheet.create({
         shadowColor: '#AFAFAF',
     },
     startBadge: {
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
+        backgroundColor: theme.colors.surface,
+        paddingHorizontal: theme.spacing.md - 4,
+        paddingVertical: theme.spacing.sm - 2,
+        borderRadius: theme.radius.md,
         borderWidth: 2,
         borderColor: '#E5E5E5',
-        marginBottom: 8,
+        marginBottom: theme.spacing.sm,
         position: 'relative',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -74,9 +75,10 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     startText: {
-        color: '#1CB0F6',
-        fontWeight: 'bold',
-        fontSize: 12,
+        color: theme.colors.primary,
+        fontWeight: theme.fontWeights.bold,
+        fontSize: theme.fontSizes.xs,
+        fontFamily: theme.fonts.bold,
     },
     startArrow: {
         position: 'absolute',
@@ -94,7 +96,7 @@ const styles = StyleSheet.create({
     starsRow: {
         flexDirection: 'row',
         gap: 2,
-        marginTop: 4,
+        marginTop: theme.spacing.xs,
     }
 });
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Image, SafeAreaView } from 'react-native';
+import { theme } from '../../theme/theme';
 import HomeHeader from '../../components/home/HomeHeader';
 import SectionBanner from '../../components/home/SectionBanner';
 import TrailNode from '../../components/home/TrailNode';
@@ -42,14 +43,14 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
   },
   scrollContent: {
     paddingBottom: 100,
   },
   trailContainer: {
     alignItems: 'center',
-    marginTop: 40,
+    marginTop: theme.spacing.xxl,
   },
   character: {
     width: 120,

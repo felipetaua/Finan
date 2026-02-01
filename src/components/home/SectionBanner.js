@@ -20,8 +20,8 @@ const SectionBanner = ({ section = 1, unit = 1, description = '' }) => {
 const styles = StyleSheet.create({
     banner: {
         backgroundColor: theme.colors.primary,
-        margin: 16,
-        borderRadius: 12,
+        margin: theme.spacing.md,
+        borderRadius: theme.radius.md,
         
         flexDirection: 'row',
         alignItems: 'center',
@@ -34,31 +34,33 @@ const styles = StyleSheet.create({
     },
     bannerContent: {
         flex: 1,
-        paddingBottom: 16,
-        paddingLeft: 16,
-        paddingRight: 8,    
-        paddingTop: 16,
+        paddingBottom: theme.spacing.md,
+        paddingLeft: theme.spacing.md,
+        paddingRight: theme.spacing.sm,    
+        paddingTop: theme.spacing.md,
     },
     sectionTitle: {
         color: 'rgba(255, 255, 255, 0.8)',
-        fontSize: 12,
-        fontWeight: 'bold',
-        marginBottom: 4,
+        fontSize: theme.fontSizes.xs,
+        fontWeight: theme.fontWeights.bold,
+        fontFamily: theme.fonts.bold,
+        marginBottom: theme.spacing.xs,
     },
     unitDescription: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: 'bold',
+        color: theme.colors.surface,
+        fontSize: theme.fontSizes.lg - 2,
+        fontWeight: theme.fontWeights.bold,
+        fontFamily: theme.fonts.bold,
     },
     notesButton: {
         height: "100%",
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 12,
+        padding: theme.spacing.md - 4,
         borderLeftWidth: 2,
         borderLeftColor: 'rgba(255, 255, 255, 0.3)',
-        marginLeft: 12,
+        marginLeft: theme.spacing.md - 4,
     },
 });
 
