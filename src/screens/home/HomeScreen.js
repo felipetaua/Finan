@@ -1,11 +1,14 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Image, SafeAreaView } from 'react-native';
+import { View, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { theme } from '../../theme/theme';
 import HomeHeader from '../../components/home/HomeHeader';
 import SectionBanner from '../../components/home/SectionBanner';
 import TrailNode from '../../components/home/TrailNode';
 
 const HomeScreen = () => {
+  const animation = React.createRef(null);
+
   const trailData = [
     { id: 1, type: 'star', color: '#FFC800', status: 'completed', position: 0 },
     { id: 2, type: 'icon', color: '#1CB0F6', status: 'upcoming', position: 50, icon: 'dumbbell' },
@@ -26,12 +29,17 @@ const HomeScreen = () => {
             unit={10} 
             description="Aprenda sobre juros e investimentos" 
         />
-
         <View style={styles.trailContainer}>
-            <Image 
-                source={require('../../assets/images/fin.png')} 
-                style={styles.character}
-                resizeMode="contain"
+            <LottieView
+                autoPlay
+                loop={true}
+                ref={animation}
+                style={{
+                    width: 15,
+                    height: 20,
+                }}
+                // Caminho para o seu arquivo json
+                source={require('../../assets/lottie/loading-coin.json')}
             />
             {trailData.map(node => <TrailNode key={node.id} node={node} />)}
         </View>

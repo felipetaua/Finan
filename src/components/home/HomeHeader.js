@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
+import LottieView from 'lottie-react-native';
+
 
 const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-
+    
     const courses = [
-        { name: "Conhecendo a base", locked: false },
+        { name: "Pscologia do Dinheiro", locked: false },
         { name: "Aprender a Investir", locked: true },
         { name: "Controle Financeiro", locked: true },
         { name: "Organizar a vida financeira", locked: true },
