@@ -4,9 +4,11 @@ import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import SelectableOption from '../../components/common/SelectableOption';
 import OnboardingHeader from '../../components/common/OnboardingHeader';
+import { useOnboarding } from '../../context/OnboardingContext';
 
 
 export default function StepScreen4({ navigation }) {
+    const { updateOnboardingData } = useOnboarding();
     const [selectedOption, setSelectedOption] = useState(null);
     
     const options = [
@@ -15,6 +17,12 @@ export default function StepScreen4({ navigation }) {
         { id: '3', title: '15 min / dia' , frequency: 'Focado'},
         { id: '4', title: '30 min / dia', frequency: 'Aprofundado'},
     ];
+
+    const handleContinue = () => {
+        const selected = options.find(opt => opt.id === selectedOption);
+        updateOnboardingData('step4', selected);
+        navigation.navigate('StepScreen5');
+    };
 
     return (
         <View style={styles.container}>
@@ -49,7 +57,7 @@ export default function StepScreen4({ navigation }) {
 
             <View style={styles.footer}>
                 <Button  
-                    onPress={() => navigation.navigate('StepScreen5')} 
+                    onPress={handleContinue} 
                     title="Continuar" 
                     type='primary'
                     disabled={!selectedOption}

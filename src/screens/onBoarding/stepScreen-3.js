@@ -4,8 +4,10 @@ import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import SelectableOption from '../../components/common/SelectableOption';
 import OnboardingHeader from '../../components/common/OnboardingHeader';
+import { useOnboarding } from '../../context/OnboardingContext';
 
 export default function StepScreen3({ navigation }) {
+    const { updateOnboardingData } = useOnboarding();
     const [selectedOption, setSelectedOption] = useState(null);
 
     const options = [
@@ -16,6 +18,13 @@ export default function StepScreen3({ navigation }) {
         { id: '5', icon: require('../../assets/icons/google.png'), title: 'Pesquisa no Google' }, 
         { id: '6', icon: require('../../assets/icons/newsletter.png'), title: 'Newsletter, Blogs e Sites'}
     ];
+
+    const handleContinue = () => {
+        const selected = options.find(opt => opt.id === selectedOption);
+        // Salvamos apenas o título ou ID para evitar erro de serialização no Firebase com o ícone (require)
+        updateOnboardingData('step3', { id: selected.id, title: selected.title });
+        navigation.navigate('StepScreen4');
+    };
 
     return (
         <View style={styles.container}>
@@ -50,7 +59,7 @@ export default function StepScreen3({ navigation }) {
 
             <View style={styles.footer}>
                 <Button  
-                    onPress={() => navigation.navigate('StepScreen4')} 
+                    onPress={handleContinue} 
                     title="Continuar" 
                     type='primary'
                     disabled={!selectedOption}
