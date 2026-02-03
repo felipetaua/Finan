@@ -2,7 +2,6 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import WelcomeScreen from '../screens/welcome/WelcomeScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
-import SignUpScreen from '../screens/auth/SignUpScreen';
 import StepScreen1 from '../screens/onBoarding/StepScreen-1';
 import StepScreen2 from '../screens/onBoarding/StepScreen-2';
 import StepScreen3 from '../screens/onBoarding/StepScreen-3';
@@ -20,7 +19,6 @@ const AuthStackNavigator = () => {
         >
             <Stack.Screen name="Welcome" component={WelcomeScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="SignUp" component={SignUpScreen} />
             <Stack.Screen name="StepScreen1" component={StepScreen1} />
             <Stack.Screen name="StepScreen2" component={StepScreen2} />
             <Stack.Screen name="StepScreen3" component={StepScreen3} />
