@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCTollFwrtQChqWRCzOF3CTQFUGDcv-skc",
+    apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
     authDomain: "finan-4854e.firebaseapp.com",
     databaseURL: "https://finan-4854e-default-rtdb.firebaseio.com",
     projectId: "finan-4854e",
