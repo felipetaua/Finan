@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
 import { theme } from '../../theme/theme';
 import HomeHeader from '../../components/home/HomeHeader';
@@ -7,6 +8,7 @@ import SectionBanner from '../../components/home/SectionBanner';
 import TrailNode from '../../components/home/TrailNode';
 
 const HomeScreen = () => {
+  const insets = useSafeAreaInsets();
   const animation = React.createRef(null);
 
   const trailData = [
@@ -20,7 +22,7 @@ const HomeScreen = () => {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       <HomeHeader streak={0} coins={132} hearts={1} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -35,8 +37,8 @@ const HomeScreen = () => {
                 loop={true}
                 ref={animation}
                 style={{
-                    width: 15,
-                    height: 20,
+                    width: 150,
+                    height: 150,
                 }}
                 // Caminho para o seu arquivo json
                 source={require('../../assets/lottie/loading-coin.json')}
@@ -44,7 +46,7 @@ const HomeScreen = () => {
             {trailData.map(node => <TrailNode key={node.id} node={node} />)}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

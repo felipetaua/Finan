@@ -3,8 +3,16 @@ import { View, Text, StyleSheet, Image, SafeArea} from 'react-native';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import OnboardingHeader from '../../components/common/OnboardingHeader';
+import { useOnboarding } from '../../context/OnboardingContext';
 
 export default function StepScreen1({ navigation }) {
+    const { updateOnboardingData } = useOnboarding();
+
+    const handleContinue = () => {
+        updateOnboardingData('step1', { viewed: true });
+        navigation.navigate('StepScreen2');
+    };
+
     return (
         <View style={styles.container}>
             <OnboardingHeader 
@@ -21,7 +29,7 @@ export default function StepScreen1({ navigation }) {
             </View>
             <View style={styles.footer}>
                 <Button  
-                    onPress={() => navigation.navigate('StepScreen2')} 
+                    onPress={handleContinue} 
                     title="Continuar" 
                     type='primary'
                 />

@@ -1,6 +1,8 @@
 import React from 'react';
 import { useFonts } from 'expo-font';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigation from './src/screens/appNavegation';
+import { OnboardingProvider } from './src/context/OnboardingContext';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -11,6 +13,12 @@ export default function App() {
     return null;
   }
 
-  return <AppNavigation />;
+  return (
+    <SafeAreaProvider>
+      <OnboardingProvider>
+        <AppNavigation />
+      </OnboardingProvider>
+    </SafeAreaProvider>
+  );
 }
 
