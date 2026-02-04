@@ -5,12 +5,27 @@ import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { FontAwesome } from '@expo/vector-icons';
+import { useCreateUserWithEmailAndPassword } from "react-firebase-hooks/auth";
+
 
 export default function LoginScreen({ navigation }) {
     const insets = useSafeAreaInsets();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+  
+    const [createUserWithEmailAndPassword, loading] =
+    useCreateUserWithEmailAndPassword(auth);
+
+  function handleSignOut(e) {
+    e.preventDefault();
+    createUserWithEmailAndPassword(email, password);
+  }
+
+  if (loading) {
+    return <p>carregando...</p>;
+  }
 
     return (
         <View style={[styles.safeArea, { paddingTop: insets.top }]}>
@@ -31,18 +46,20 @@ export default function LoginScreen({ navigation }) {
                         value={email}
                         onChangeText={setEmail}
                         keyboardType="email-address"
+                        onChange={(e) => setEmail(e.target.value)}
                     />
                     <Input
                         placeholder="senha"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
+                        onChange={(e) => setPassword(e.target.value)}
                     />
 
-                    <Button
+                    <Button onClick={handleSignOut}>
                         title="Continue"
                         onPress={() => {}}
-                    />
+                    </Button>
                 </View>
 
                 <View style={styles.separatorContainer}>
