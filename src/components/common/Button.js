@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, TouchableOpacity, Text, View } from 'react-native';
 import { theme } from '../../theme/theme';
 
-const Button = ({ onPress, title, type = 'primary', icon }) => {
+const Button = ({ onPress, title, type = 'primary', icon, children }) => {
     let buttonStyle;
     let textStyle;
 
@@ -27,7 +27,8 @@ const Button = ({ onPress, title, type = 'primary', icon }) => {
         >
             <View style={styles.content}>
                 {icon && <View style={styles.iconContainer}>{icon}</View>}
-                <Text style={textStyle}>{title}</Text>
+                {title ? <Text style={textStyle}>{title}</Text> : null}
+                {children}
             </View>
         </TouchableOpacity>
     );
