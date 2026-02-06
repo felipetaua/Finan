@@ -5,15 +5,19 @@ import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { FontAwesome } from '@expo/vector-icons';
-import { auth } from '../../services/firebaseConfig';
+import { auth, db } from '../../services/firebaseConfig';
 import { 
     useCreateUserWithEmailAndPassword, 
     useSignInWithEmailAndPassword 
 } from "react-firebase-hooks/auth";
 import { updateProfile } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { useOnboarding } from '../../context/OnboardingContext';
 
 export default function LoginScreen({ navigation }) {
     const insets = useSafeAreaInsets();
+    const { onboardingData } = useOnboarding();
+    const [isLogin, setIsLogin] = useState(true);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -38,20 +42,32 @@ export default function LoginScreen({ navigation }) {
             return;
         }
 
+        if (!isLogin && !name) {
+            Alert.alert("Erro", "Por favor, preencha seu nome.");
+            return;
+        }
+
         try {
-            if (name.trim() !== '') {
-                // Se o nome estiver preenchido, tentamos criar conta
+            if (!isLogin) {
+                // Criar conta
                 const result = await createUserWithEmailAndPassword(email, password);
                 if (result && result.user) {
                     await updateProfile(result.user, { displayName: name });
+                    
+                    // onboarding vinculados ao usuário
+                    await setDoc(doc(db, "users", result.user.uid), {
+                        name: name,
+                        email: email,
+                        onboarding: onboardingData,
+                        createdAt: serverTimestamp()
+                    });
                 }
             } else {
-                // Se o nome estiver vazio, tentamos fazer login
+                // Fazer login
                 await signInWithEmailAndPassword(email, password);
             }
         } catch (error) {
-            Alert.alert("Erro", "Ocorreu um erro ao processar sua solicitação.");
-            console.error(error);
+            console.error("Erro no handleContinue:", error);
         }
     };
 
@@ -62,18 +78,35 @@ export default function LoginScreen({ navigation }) {
             <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <Text style={styles.logo}>Finan</Text>
-                    <Text style={styles.title}>Login ou Criar Conta</Text>
+                    <Text style={styles.title}>{isLogin ? 'Bem-vindo!' : 'Comece agora'}</Text>
                     <Text style={styles.helperText}>
-                        {name ? 'Preencha os dados para criar sua conta' : 'Insira seu email e senha para entrar'}
+                        {isLogin ? 'Entre para continuar cuidando das suas finanças' : 'Crie sua conta e tenha o controle total'}
                     </Text>
                 </View>
 
+                <View style={styles.toggleWrapper}>
+                    <TouchableOpacity 
+                        style={[styles.toggleBtn, isLogin && styles.toggleBtnActive]} 
+                        onPress={() => setIsLogin(true)}
+                    >
+                        <Text style={[styles.toggleBtnText, isLogin && styles.toggleBtnTextActive]}>Login</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.toggleBtn, !isLogin && styles.toggleBtnActive]} 
+                        onPress={() => setIsLogin(false)}
+                    >
+                        <Text style={[styles.toggleBtnText, !isLogin && styles.toggleBtnTextActive]}>Criar conta</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <View style={styles.form}>
-                    <Input
-                        placeholder="Nome (opcional para login)"
-                        value={name}
-                        onChangeText={setName}
-                    />
+                    {!isLogin && (
+                        <Input
+                            placeholder="Nome Completo"
+                            value={name}
+                            onChangeText={setName}
+                        />
+                    )}
                     <Input
                         placeholder="Email"
                         value={email}
@@ -81,7 +114,7 @@ export default function LoginScreen({ navigation }) {
                         keyboardType="email-address"
                     />
                     <Input
-                        placeholder="senha"
+                        placeholder="Senha"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
@@ -94,7 +127,7 @@ export default function LoginScreen({ navigation }) {
                     ) : null}
 
                     <Button
-                        title={isLoading ? "" : (name ? "Criar Conta" : "Entrar")}
+                        title={isLoading ? "" : (isLogin ? "Entrar" : "Cadastrar")}
                         onPress={handleContinue}
                     >
                         {isLoading && <ActivityIndicator color="#FFF" />}
@@ -170,6 +203,36 @@ const styles = StyleSheet.create({
         fontSize: theme.fontSizes.sm,
         color: theme.colors.textSecondary,
         textAlign: 'center',
+    },
+    toggleWrapper: {
+        flexDirection: 'row',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 24,
+        width: '100%',
+    },
+    toggleBtn: {
+        flex: 1,
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderRadius: 10,
+    },
+    toggleBtnActive: {
+        backgroundColor: '#FFFFFF',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    toggleBtnText: {
+        fontSize: theme.fontSizes.sm,
+        fontWeight: '600',
+        color: theme.colors.textSecondary,
+    },
+    toggleBtnTextActive: {
+        color: theme.colors.primary,
     },
     form: {
         width: '100%',
