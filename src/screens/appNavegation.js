@@ -1,13 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import BottomTabNavigator from '../navigation/BottomTabNavigator';
 import AuthStackNavigator from '../navigation/AuthStackNavigator';
 import SplashScreen from './splash/SplashScreen';
+import { auth } from '../services/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function AppNavigation() {
     const [isLoading, setIsLoading] = useState(true);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);// deixar falso para sair do app
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                setIsAuthenticated(true);
+            } else {
+                setIsAuthenticated(false);
+            }
+        });
+
+        return unsubscribe;
+    }, []);
 
     if (isLoading) {
         return <SplashScreen onFinish={() => setIsLoading(false)} />;
