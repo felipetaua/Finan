@@ -1,22 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { FontAwesome } from '@expo/vector-icons';
-import { auth } from '../../services/firebaseConfig';
+import { auth, db } from '../../services/firebaseConfig';
 import { 
     useCreateUserWithEmailAndPassword, 
     useSignInWithEmailAndPassword 
 } from "react-firebase-hooks/auth";
-import { updateProfile } from "firebase/auth";
+import { 
+    updateProfile, 
+    GoogleAuthProvider, 
+    signInWithCredential 
+} from "firebase/auth";
+import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { useOnboarding } from '../../context/OnboardingContext';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ navigation }) {
     const insets = useSafeAreaInsets();
+    const { onboardingData } = useOnboarding();
+    const [isLogin, setIsLogin] = useState(true);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        redirectUri: process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI,
+    });
+
+    useEffect(() => {
+        if (request) {
+            console.log("URI de redirecionamento sendo usada:", request.redirectUri);
+        }
+    }, [request]);
+
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const { id_token, authentication } = response;
+            // No SDK 54, o token pode vir em lugares diferentes dependendo da plataforma
+            const token = id_token || authentication?.idToken || response.params?.id_token;
+            
+            console.log("Login Google sucesso! Autenticando no Firebase...");
+            
+            if (token) {
+                const credential = GoogleAuthProvider.credential(token);
+                handleFirebaseSocialLogin(credential, 'google');
+            } else {
+                console.error("Token não encontrado na resposta do Google:", response);
+            }
+        } else if (response?.type === 'error') {
+            console.error("Erro no AuthSession:", response.error);
+        }
+    }, [response]);
 
     const [
         createUserWithEmailAndPassword,
@@ -38,20 +83,63 @@ export default function LoginScreen({ navigation }) {
             return;
         }
 
+        if (!isLogin && !name) {
+            Alert.alert("Erro", "Por favor, preencha seu nome.");
+            return;
+        }
+
         try {
-            if (name.trim() !== '') {
-                // Se o nome estiver preenchido, tentamos criar conta
+            if (!isLogin) {
+                // Criar conta
                 const result = await createUserWithEmailAndPassword(email, password);
                 if (result && result.user) {
                     await updateProfile(result.user, { displayName: name });
+                    
+                    // onboarding vinculados ao usuário
+                    await setDoc(doc(db, "users", result.user.uid), {
+                        name: name,
+                        email: email,
+                        onboarding: onboardingData,
+                        createdAt: serverTimestamp()
+                    });
                 }
             } else {
-                // Se o nome estiver vazio, tentamos fazer login
+                // Fazer login
                 await signInWithEmailAndPassword(email, password);
             }
         } catch (error) {
-            Alert.alert("Erro", "Ocorreu um erro ao processar sua solicitação.");
-            console.error(error);
+            console.error("Erro no handleContinue:", error);
+        }
+    };
+
+    const handleFirebaseSocialLogin = async (credential, type) => {
+        try {
+            const result = await signInWithCredential(auth, credential);
+            if (result.user) {
+                const userRef = doc(db, "users", result.user.uid);
+                const userSnap = await getDoc(userRef);
+
+                if (!userSnap.exists()) {
+                    await setDoc(userRef, {
+                        name: result.user.displayName,
+                        email: result.user.email,
+                        onboarding: onboardingData,
+                        createdAt: serverTimestamp(),
+                        provider: type
+                    });
+                }
+            }
+        } catch (error) {
+            console.error(`Erro no login com ${type}:`, error);
+            Alert.alert("Erro", "Ocorreu um problema ao vincular sua conta.");
+        }
+    };
+
+    const handleSocialLogin = async (type) => {
+        if (type === 'google') {
+            promptAsync();
+        } else {
+            Alert.alert("Aviso", "Login com Facebook será implementado em breve.");
         }
     };
 
@@ -62,18 +150,35 @@ export default function LoginScreen({ navigation }) {
             <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <Text style={styles.logo}>Finan</Text>
-                    <Text style={styles.title}>Login ou Criar Conta</Text>
+                    <Text style={styles.title}>{isLogin ? 'Bem-vindo!' : 'Comece agora'}</Text>
                     <Text style={styles.helperText}>
-                        {name ? 'Preencha os dados para criar sua conta' : 'Insira seu email e senha para entrar'}
+                        {isLogin ? 'Entre para continuar cuidando das suas finanças' : 'Crie sua conta e tenha o controle total'}
                     </Text>
                 </View>
 
+                <View style={styles.toggleWrapper}>
+                    <TouchableOpacity 
+                        style={[styles.toggleBtn, isLogin && styles.toggleBtnActive]} 
+                        onPress={() => setIsLogin(true)}
+                    >
+                        <Text style={[styles.toggleBtnText, isLogin && styles.toggleBtnTextActive]}>Login</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.toggleBtn, !isLogin && styles.toggleBtnActive]} 
+                        onPress={() => setIsLogin(false)}
+                    >
+                        <Text style={[styles.toggleBtnText, !isLogin && styles.toggleBtnTextActive]}>Criar conta</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <View style={styles.form}>
-                    <Input
-                        placeholder="Nome (opcional para login)"
-                        value={name}
-                        onChangeText={setName}
-                    />
+                    {!isLogin && (
+                        <Input
+                            placeholder="Nome Completo"
+                            value={name}
+                            onChangeText={setName}
+                        />
+                    )}
                     <Input
                         placeholder="Email"
                         value={email}
@@ -81,7 +186,7 @@ export default function LoginScreen({ navigation }) {
                         keyboardType="email-address"
                     />
                     <Input
-                        placeholder="senha"
+                        placeholder="Senha"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
@@ -94,7 +199,7 @@ export default function LoginScreen({ navigation }) {
                     ) : null}
 
                     <Button
-                        title={isLoading ? "" : (name ? "Criar Conta" : "Entrar")}
+                        title={isLoading ? "" : (isLogin ? "Entrar" : "Cadastrar")}
                         onPress={handleContinue}
                     >
                         {isLoading && <ActivityIndicator color="#FFF" />}
@@ -111,13 +216,13 @@ export default function LoginScreen({ navigation }) {
                     <Button
                         title="Continue com Google"
                         type="outline"
-                        onPress={() => {}}
+                        onPress={() => handleSocialLogin('google')}
                         icon={<FontAwesome name="google" size={20} color="#EA4335" />}
                     />
                     <Button
                         title="Continue com Facebook"
                         type="outline"
-                        onPress={() => {}}
+                        onPress={() => handleSocialLogin('facebook')}
                         icon={<FontAwesome name="facebook" size={20} color="#1877F2" />}
                     />
                 </View>
@@ -170,6 +275,36 @@ const styles = StyleSheet.create({
         fontSize: theme.fontSizes.sm,
         color: theme.colors.textSecondary,
         textAlign: 'center',
+    },
+    toggleWrapper: {
+        flexDirection: 'row',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 24,
+        width: '100%',
+    },
+    toggleBtn: {
+        flex: 1,
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderRadius: 10,
+    },
+    toggleBtnActive: {
+        backgroundColor: '#FFFFFF',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    toggleBtnText: {
+        fontSize: theme.fontSizes.sm,
+        fontWeight: '600',
+        color: theme.colors.textSecondary,
+    },
+    toggleBtnTextActive: {
+        color: theme.colors.primary,
     },
     form: {
         width: '100%',
