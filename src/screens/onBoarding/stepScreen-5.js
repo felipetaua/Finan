@@ -5,14 +5,11 @@ import Button from '../../components/common/Button';
 import SelectableOption from '../../components/common/SelectableOption';
 import OnboardingHeader from '../../components/common/OnboardingHeader';
 import { useOnboarding } from '../../context/OnboardingContext';
-import { db } from '../../services/firebaseConfig';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 
 export default function StepScreen5({ navigation }) {
-    const { onboardingData, updateOnboardingData } = useOnboarding();
+    const { updateOnboardingData } = useOnboarding();
     const [selectedOption, setSelectedOption] = useState(null);
-    const [loading, setLoading] = useState(false);
     
     const options = [
         { id: '1', icon: require('../../assets/icons/seeding.png'), title: 'Aprender a Investir' },
@@ -21,35 +18,11 @@ export default function StepScreen5({ navigation }) {
         { id: '4', icon: require('../../assets/icons/bank.png'), title: 'Organizar a Vida Financeira' },
     ];
 
-    const handleFinish = async () => {
+    const handleFinish = () => {
         const selected = options.find(opt => opt.id === selectedOption);
         const step5Data = { id: selected.id, title: selected.title };
         updateOnboardingData('step5', step5Data);
-        
-        setLoading(true);
-        try {
-            const finalData = {
-                step1: onboardingData.step1,
-                step2: onboardingData.step2,
-                step3: onboardingData.step3,
-                step4: onboardingData.step4,
-                step5: step5Data,
-                createdAt: new Date().toISOString() // Usando string para evitar problemas de compatibilidade imediata
-            };
-
-            console.log('Tentando salvar dados:', finalData);
-
-            // Envia para a coleção 'onboarding_responses' no Firestore
-            await addDoc(collection(db, 'onboarding_responses'), finalData);
-            
-            console.log('Dados do Onboarding salvos com sucesso!');
-            navigation.navigate('Login');
-        } catch (error) {
-            console.error('Erro detalhado ao salvar no Firebase:', error);
-            Alert.alert('Erro', `Não foi possível salvar suas preferências: ${error.message}`);
-        } finally {
-            setLoading(false);
-        }
+        navigation.navigate('Login');
     };
 
     return (
@@ -84,16 +57,12 @@ export default function StepScreen5({ navigation }) {
             </View>
 
             <View style={styles.footer}>
-                {loading ? (
-                    <ActivityIndicator size="large" color={theme.colors.primary} />
-                ) : (
-                    <Button  
-                        onPress={handleFinish} 
-                        title="Finalizar" 
-                        type='primary'
-                        disabled={!selectedOption}
-                    />
-                )}
+                <Button  
+                    onPress={handleFinish} 
+                    title="Finalizar" 
+                    type='primary'
+                    disabled={!selectedOption}
+                />
             </View>
         </View>
     );

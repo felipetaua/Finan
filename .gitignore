@@ -40,3 +40,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# archives google
+client_secret_841338630225-47r5lpj0bn97buv276ruv887s89hd1o6.apps.googleusercontent.com.json
+client_secret_841338630225-2be15ciq0bflur50niuvc27go5a6huqp.apps.googleusercontent.com.json
