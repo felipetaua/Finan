@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
@@ -10,9 +10,18 @@ import {
     useCreateUserWithEmailAndPassword, 
     useSignInWithEmailAndPassword 
 } from "react-firebase-hooks/auth";
-import { updateProfile } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { 
+    updateProfile, 
+    GoogleAuthProvider, 
+    signInWithCredential 
+} from "firebase/auth";
+import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { useOnboarding } from '../../context/OnboardingContext';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ navigation }) {
     const insets = useSafeAreaInsets();
@@ -21,6 +30,38 @@ export default function LoginScreen({ navigation }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        redirectUri: process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI,
+    });
+
+    useEffect(() => {
+        if (request) {
+            console.log("URI de redirecionamento sendo usada:", request.redirectUri);
+        }
+    }, [request]);
+
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const { id_token, authentication } = response;
+            // No SDK 54, o token pode vir em lugares diferentes dependendo da plataforma
+            const token = id_token || authentication?.idToken || response.params?.id_token;
+            
+            console.log("Login Google sucesso! Autenticando no Firebase...");
+            
+            if (token) {
+                const credential = GoogleAuthProvider.credential(token);
+                handleFirebaseSocialLogin(credential, 'google');
+            } else {
+                console.error("Token não encontrado na resposta do Google:", response);
+            }
+        } else if (response?.type === 'error') {
+            console.error("Erro no AuthSession:", response.error);
+        }
+    }, [response]);
 
     const [
         createUserWithEmailAndPassword,
@@ -68,6 +109,37 @@ export default function LoginScreen({ navigation }) {
             }
         } catch (error) {
             console.error("Erro no handleContinue:", error);
+        }
+    };
+
+    const handleFirebaseSocialLogin = async (credential, type) => {
+        try {
+            const result = await signInWithCredential(auth, credential);
+            if (result.user) {
+                const userRef = doc(db, "users", result.user.uid);
+                const userSnap = await getDoc(userRef);
+
+                if (!userSnap.exists()) {
+                    await setDoc(userRef, {
+                        name: result.user.displayName,
+                        email: result.user.email,
+                        onboarding: onboardingData,
+                        createdAt: serverTimestamp(),
+                        provider: type
+                    });
+                }
+            }
+        } catch (error) {
+            console.error(`Erro no login com ${type}:`, error);
+            Alert.alert("Erro", "Ocorreu um problema ao vincular sua conta.");
+        }
+    };
+
+    const handleSocialLogin = async (type) => {
+        if (type === 'google') {
+            promptAsync();
+        } else {
+            Alert.alert("Aviso", "Login com Facebook será implementado em breve.");
         }
     };
 
@@ -144,13 +216,13 @@ export default function LoginScreen({ navigation }) {
                     <Button
                         title="Continue com Google"
                         type="outline"
-                        onPress={() => {}}
+                        onPress={() => handleSocialLogin('google')}
                         icon={<FontAwesome name="google" size={20} color="#EA4335" />}
                     />
                     <Button
                         title="Continue com Facebook"
                         type="outline"
-                        onPress={() => {}}
+                        onPress={() => handleSocialLogin('facebook')}
                         icon={<FontAwesome name="facebook" size={20} color="#1877F2" />}
                     />
                 </View>
