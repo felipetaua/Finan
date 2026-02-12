@@ -7,7 +7,7 @@
 ![Status](https://img.shields.io/badge/STATUS-EM%20DESENVOLVIMENTO-orange?style=for-the-badge)
 ![Plataforma](https://img.shields.io/badge/PLATFORMA-MOBILE-blue?style=for-the-badge&logo=react)
 
-**Finan** é uma plataforma que integra controle financeiro prático com uma trilha de educação gamificada. O objetivo é transformar a gestão do dinheiro em uma experiência contínua de aprendizado, incentivando o usuário a evoluir sua saúde financeira mesmo em períodos sem movimentações.
+**Finan** é uma plataforma que integra controle financeiro prático com uma trilha de educação gamificada. O objetivo é transformar a gestão do dinheiro em uma experiência contínua de aprendizado, incentivando o usuário a evoluir sua saúde financeira de forma dinâmica.
 
 <br/>
 
