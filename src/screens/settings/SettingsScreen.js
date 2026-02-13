@@ -22,20 +22,23 @@ const SettingsScreen = ({ navigation }) => {
         );
     };
 
-    const SettingItem = ({ icon, label, onPress, value, type = 'chevron', color = theme.colors.textPrimary }) => (
-        <TouchableOpacity style={styles.item} onPress={onPress}>
-            <View style={styles.itemLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-                    <Ionicons name={icon} size={22} color={color} />
+    const SettingItem = ({ icon, label, onPress, value, type = 'chevron', color = theme.colors.textPrimary, isMaterial = false }) => {
+        const IconComponent = isMaterial ? MaterialCommunityIcons : Ionicons;
+        return (
+            <TouchableOpacity style={styles.item} onPress={onPress}>
+                <View style={styles.itemLeft}>
+                    <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+                        <IconComponent name={icon} size={22} color={color} />
+                    </View>
+                    <Text style={[styles.label, { color }]}>{label}</Text>
                 </View>
-                <Text style={[styles.label, { color }]}>{label}</Text>
-            </View>
-            <View style={styles.itemRight}>
-                {value && <Text style={styles.value}>{value}</Text>}
-                {type === 'chevron' && <Ionicons name="chevron-forward" size={20} color="#999" />}
-            </View>
-        </TouchableOpacity>
-    );
+                <View style={styles.itemRight}>
+                    {value && <Text style={styles.value}>{value}</Text>}
+                    {type === 'chevron' && <Ionicons name="chevron-forward" size={20} color="#999" />}
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -63,6 +66,14 @@ const SettingsScreen = ({ navigation }) => {
                         value="Português"
                         onPress={() => {}} 
                         color="#8B5CF6"
+                    />
+                    <SettingItem 
+                        isMaterial
+                        icon="swap-horizontal" 
+                        label="Moeda" 
+                        value="BRL (R$)"
+                        onPress={() => {}} 
+                        color="#49d327"
                     />
                     <SettingItem 
                         icon="notifications-outline" 
