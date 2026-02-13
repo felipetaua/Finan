@@ -31,7 +31,7 @@ const ProfileScreen = ({ navigation }) => {
                 {/* Profile Information */}
                 <View style={styles.content}>
                     <View style={styles.profileInfo}>
-                        <Text style={styles.name}>username</Text>
+                        <Text style={styles.name}>Username</Text>
                         <Text style={styles.handle}>@username ✦ Criado em Dezembro de 2020</Text>
                     </View>
 
@@ -39,7 +39,7 @@ const ProfileScreen = ({ navigation }) => {
                     <View style={styles.statsContainer}>
                         <View style={styles.statItem}>
                             <Text style={styles.statValue}>+3</Text>
-                            <Text style={styles.statLabel}>Cursos</Text>
+                            <Text style={styles.statLabel}>Trilhas</Text>
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.statItem}>
@@ -103,13 +103,34 @@ const ProfileScreen = ({ navigation }) => {
                         </View>
                     </View>
 
-                    {/* Friend Streaks  */}
-                    <View style={[styles.sectionHeader, { marginTop: 20 }]}>
-                        <Text style={styles.sectionTitle}>Friend Streaks</Text>
+                    {/* Friend Streaks Section */}
+                    <View style={styles.friendStreaksCard}>
+                        <Text style={styles.friendStreaksTitle}>Friend Streaks</Text>
+                        <View style={styles.friendsRow}>
+                            {/* Active Friend Streak */}
+                            <View style={styles.friendItem}>
+                                <View style={styles.avatarWrapper}>
+                                    <View style={[styles.avatarCircle, { backgroundColor: '#C1F2B0' }]}>
+                                        <Image 
+                                            source={require('../../assets/images/fin.png')} 
+                                            style={styles.friendAvatarImage}
+                                            resizeMode="cover"
+                                        />
+                                    </View>
+                                    <View style={styles.activeStreakBadge}>
+                                        <MaterialCommunityIcons name="clock-outline" size={14} color="#999999" />
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Add Friends Slots */}
+                            {[1, 2, 3].map((index) => (
+                                <TouchableOpacity key={index} style={styles.addFriendSlot}>
+                                    <Ionicons name="add" size={28} color="#CCCCCC" />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
-                    
-                    {/* Placeholder */}
-                    <View style={{ height: 100 }} />
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -259,7 +280,70 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#999999',
         fontWeight: '500',
-        marginLeft: 32, // align with values
+        marginLeft: 32, 
+    },
+    friendStreaksCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        padding: 16,
+        marginTop: 10,
+        marginBottom: 30,
+    },
+    friendStreaksTitle: {
+        fontFamily: theme.fonts.title,
+        fontSize: 24,
+        color: '#333333',
+        marginBottom: 16,
+    },
+    friendsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    friendItem: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarWrapper: {
+        position: 'relative',
+    },
+    avatarCircle: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
+    },
+    friendAvatarImage: {
+        width: '100%',
+        height: '100%',
+        marginTop: 5, 
+    },
+    activeStreakBadge: {
+        position: 'absolute',
+        bottom: -4,
+        right: 0,
+        backgroundColor: '#FFFFFF',
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 1.5,
+        borderColor: '#CCCCCC',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    addFriendSlot: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        borderWidth: 2,
+        borderColor: '#CCCCCC',
+        borderStyle: 'dashed',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
 
