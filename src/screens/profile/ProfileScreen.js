@@ -154,8 +154,9 @@ const styles = StyleSheet.create({
     },
     settingsButton: {
         position: 'absolute',
-        top: 20,
+        top: 40,
         right: 20,
+        padding: 5, 
     },
     characterContainer: {
         width: 180,
