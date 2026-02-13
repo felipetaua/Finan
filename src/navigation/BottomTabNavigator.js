@@ -7,7 +7,7 @@ import HomeScreen from '../screens/home/HomeScreen';
 import FinanceScreen from '../screens/finance/FinanceScreen';
 import GoalsScreen from '../screens/finance/GoalsScreen';
 import ProgressScreen from '../screens/finance/ProgressScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
+import ProfileStackNavigator from './ProfileStackNavigator';
 
 const Tab = createBottomTabNavigator();
 
@@ -41,7 +41,7 @@ const BottomTabNavigator = () => {
       />
       <Tab.Screen 
         name="Profile" 
-        component={ProfileScreen}
+        component={ProfileStackNavigator}
         options={{ title: 'Perfil' }}
       />
     </Tab.Navigator>
