@@ -3,10 +3,24 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
+import { auth } from '../../services/firebaseConfig';
 
 const { width } = Dimensions.get('window');
 
 const ProfileScreen = ({ navigation }) => {
+    const user = auth.currentUser;
+
+    const creationDate = user?.metadata?.creationTime 
+        ? new Date(user.metadata.creationTime) 
+        : new Date();
+    
+    const formattedDate = creationDate.toLocaleDateString('pt-BR', {
+        month: 'long',
+        year: 'numeric'
+    });
+
+    const userShortCode = user?.uid ? user.uid.substring(0, 6).toUpperCase() : 'XXXXXX';
+
     return (
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -31,8 +45,8 @@ const ProfileScreen = ({ navigation }) => {
                 {/* Profile Information */}
                 <View style={styles.content}>
                     <View style={styles.profileInfo}>
-                        <Text style={styles.name}>Username</Text>
-                        <Text style={styles.handle}>@username ✦ Criado em Dezembro de 2020</Text>
+                        <Text style={styles.name}>{user?.displayName || 'Usuário Finan'}</Text>
+                        <Text style={styles.handle}>@{userShortCode} • Criado em {formattedDate}</Text>
                     </View>
 
                     {/* Stats Summary */}
