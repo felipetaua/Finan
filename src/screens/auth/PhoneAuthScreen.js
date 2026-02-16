@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, ScrollView, Modal, FlatList } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, ScrollView, Modal, FlatList, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
@@ -20,8 +20,79 @@ export default function PhoneAuthScreen({ navigation }) {
     const [verificationId, setVerificationId] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const [loadingCountries, setLoadingCountries] = useState(true);
+    const [countryData, setCountryData] = useState([
+        { id: 'BR', name: 'Brasil', code: '+55', flag: 'https://flagcdn.com/w80/br.png' },
+        { id: 'PT', name: 'Portugal', code: '+351', flag: 'https://flagcdn.com/w80/pt.png' },
+        { id: 'US', name: 'Estados Unidos', code: '+1', flag: 'https://flagcdn.com/w80/us.png' },
+        { id: 'ES', name: 'Espanha', code: '+34', flag: 'https://flagcdn.com/w80/es.png' },
+        { id: 'GB', name: 'Reino Unido', code: '+44', flag: 'https://flagcdn.com/w80/gb.png' },
+        { id: 'AO', name: 'Angola', code: '+244', flag: 'https://flagcdn.com/w80/ao.png' },
+        { id: 'MZ', name: 'Moçambique', code: '+258', flag: 'https://flagcdn.com/w80/mz.png' },
+    ]);
     const [countryCode, setCountryCode] = useState('+55');
+    const [selectedCountry, setSelectedCountry] = useState({
+        name: 'Brasil',
+        code: '+55',
+        flag: 'https://flagcdn.com/w80/br.png'
+    });
     const [isCountryModalVisible, setIsCountryModalVisible] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // API paises
+    useEffect(() => {
+        const fetchCountries = async () => {
+            try {
+                console.log("Iniciando busca na REST Countries API...");
+                const response = await fetch('https://restcountries.com/v3.1/all?fields=name,translations,flags,idd,cca2');
+                const data = await response.json();
+                
+                const priorityCodes = ['BR', 'PT', 'US', 'ES', 'GB', 'AO', 'MZ'];
+                
+                const formattedCountries = data
+                    .filter(item => item.idd && item.idd.root)
+                    .map(item => {
+                        const root = item.idd.root;
+                        const suffix = item.idd.suffixes && item.idd.suffixes.length === 1 ? item.idd.suffixes[0] : '';
+                        const ddi = `${root}${suffix}`;
+                        
+                        return {
+                            id: item.cca2,
+                            name: item.translations?.por?.common || item.name.common,
+                            code: ddi,
+                            flag: item.flags.png
+                        };
+                    })
+                    .filter(item => item.code.length > 1)
+                    .sort((a, b) => {
+                        const scoreA = priorityCodes.indexOf(a.id);
+                        const scoreB = priorityCodes.indexOf(b.id);
+                        
+                        // Se ambos estão na lista de prioridade, mantêm a ordem da lista
+                        if (scoreA !== -1 && scoreB !== -1) return scoreA - scoreB;
+                        // Se apenas A está na prioridade, ele sobe
+                        if (scoreA !== -1) return -1;
+                        // Se apenas B está na prioridade, ele sobe
+                        if (scoreB !== -1) return 1;
+                        // Caso contrário, ordem alfabética
+                        return a.name.localeCompare(b.name);
+                    });
+                
+                setCountryData(formattedCountries);
+                setLoadingCountries(false);
+                console.log("REST Countries carregada com sucesso.");
+            } catch (error) {
+                console.error("Erro ao carregar REST Countries API:", error);
+                setLoadingCountries(false);
+            }
+        };
+        fetchCountries();
+    }, []);
+
+    const filteredCountries = countryData.filter(country => 
+        country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        country.code.includes(searchQuery)
+    );
 
     const formatPhoneNumber = (text) => {
         const cleaned = text.replace(/\D/g, '');
@@ -42,14 +113,6 @@ export default function PhoneAuthScreen({ navigation }) {
         const formatted = formatPhoneNumber(text);
         setPhoneNumber(formatted);
     };
-
-    const countries = [
-        { name: 'Brasil', code: '+55', flag: '🇧🇷' },
-        { name: 'Portugal', code: '+351', flag: '🇵🇹' },
-        { name: 'EUA', code: '+1', flag: '🇺🇸' },
-        { name: 'Angola', code: '+244', flag: '🇦🇴' },
-        { name: 'Moçambique', code: '+258', flag: '🇲🇿' },
-    ];
 
     const handleFirebaseSocialLogin = async (credential) => {
         try {
@@ -162,10 +225,18 @@ export default function PhoneAuthScreen({ navigation }) {
                                     style={styles.countryPicker}
                                     onPress={() => setIsCountryModalVisible(true)}
                                 >
-                                    <Text style={styles.countryFlag}>
-                                        {countries.find(c => c.code === countryCode)?.flag}
-                                    </Text>
-                                    <Text style={styles.countryCodeText}>{countryCode}</Text>
+                                    {selectedCountry.flag.startsWith('http') ? (
+                                        <Image 
+                                            source={{ 
+                                                uri: selectedCountry.flag,
+                                                cache: 'force-cache'
+                                            }} 
+                                            style={styles.flagImage} 
+                                        />
+                                    ) : (
+                                        <Text style={styles.countryFlag}>{selectedCountry.flag}</Text>
+                                    )}
+                                    <Text style={styles.countryCodeText}>{selectedCountry.code}</Text>
                                     <FontAwesome name="chevron-down" size={12} color={theme.colors.textSecondary} />
                                 </TouchableOpacity>
                                 <View style={styles.phoneInputContainer}>
@@ -231,26 +302,59 @@ export default function PhoneAuthScreen({ navigation }) {
                         <View style={styles.countryModalContent}>
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>Selecione seu país</Text>
-                                <TouchableOpacity onPress={() => setIsCountryModalVisible(false)}>
+                                <TouchableOpacity onPress={() => {
+                                    setIsCountryModalVisible(false);
+                                    setSearchQuery('');
+                                }}>
                                     <FontAwesome name="close" size={24} color={theme.colors.textPrimary} />
                                 </TouchableOpacity>
                             </View>
+
+                            <Input
+                                placeholder="Buscar país ou código..."
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoCorrect={false}
+                            />
+
+                            {loadingCountries && searchQuery === '' && (
+                                <ActivityIndicator style={{ marginVertical: 20 }} color={theme.colors.primary} />
+                            )}
+
                             <FlatList
-                                data={countries}
-                                keyExtractor={(item) => item.code}
+                                data={filteredCountries}
+                                keyExtractor={(item) => item.id}
+                                initialNumToRender={10}
+                                maxToRenderPerBatch={10}
+                                windowSize={5}
+                                removeClippedSubviews={Platform.OS === 'android'}
                                 renderItem={({ item }) => (
                                     <TouchableOpacity 
                                         style={styles.countryItem}
                                         onPress={() => {
+                                            setSelectedCountry(item);
                                             setCountryCode(item.code);
                                             setIsCountryModalVisible(false);
+                                            setSearchQuery('');
                                         }}
                                     >
-                                        <Text style={styles.itemFlag}>{item.flag}</Text>
-                                        <Text style={styles.itemName}>{item.name}</Text>
+                                        <Image 
+                                            source={{ 
+                                                uri: item.flag,
+                                                cache: 'force-cache'
+                                            }} 
+                                            style={styles.itemFlagImage}
+                                            resizeMode="contain"
+                                        />
+                                        <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
                                         <Text style={styles.itemCode}>{item.code}</Text>
                                     </TouchableOpacity>
                                 )}
+                                ListEmptyComponent={
+                                    <View style={styles.emptyContainer}>
+                                        <Text style={styles.emptyText}>Nenhum país encontrado</Text>
+                                    </View>
+                                }
                             />
                         </View>
                     </View>
@@ -310,6 +414,19 @@ const styles = StyleSheet.create({
     },
     countryFlag: {
         fontSize: 20,
+    },
+    flagImage: {
+        width: 32,
+        height: 20,
+        borderRadius: 4,
+        backgroundColor: '#F3F4F6', 
+    },
+    itemFlagImage: {
+        width: 32,
+        height: 20,
+        borderRadius: 4,
+        marginRight: 16,
+        backgroundColor: '#F3F4F6',
     },
     countryCodeText: {
         fontSize: 16,
@@ -371,5 +488,13 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: theme.colors.textSecondary,
+    },
+    emptyContainer: {
+        padding: 40,
+        alignItems: 'center',
+    },
+    emptyText: {
+        color: theme.colors.textSecondary,
+        fontSize: 16,
     },
 });
