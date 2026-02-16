@@ -1,22 +1,27 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, Text, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, Text, View, ActivityIndicator } from 'react-native';
 import { theme } from '../../theme/theme';
 
-const Button = ({ onPress, title, type = 'primary', icon, children }) => {
+const Button = ({ onPress, title, type = 'primary', icon, children, disabled, isLoading }) => {
     let buttonStyle;
     let textStyle;
 
+    const colors = {
+        primary: theme.colors.primary,
+        surface: theme.colors.surface,
+    };
+
     switch (type) {
         case 'secondary':
-            buttonStyle = styles.buttonSecondary;
+            buttonStyle = [styles.buttonSecondary, (disabled || isLoading) && styles.buttonDisabled];
             textStyle = styles.buttonTextSecondary;
             break;
         case 'outline':
-            buttonStyle = styles.buttonOutline;
+            buttonStyle = [styles.buttonOutline, (disabled || isLoading) && styles.buttonDisabled];
             textStyle = styles.buttonTextOutline;
             break;
         default:
-            buttonStyle = styles.buttonPrimary;
+            buttonStyle = [styles.buttonPrimary, (disabled || isLoading) && styles.buttonDisabled];
             textStyle = styles.buttonTextPrimary;
     }
 
@@ -24,15 +29,22 @@ const Button = ({ onPress, title, type = 'primary', icon, children }) => {
         <TouchableOpacity 
             style={buttonStyle}
             onPress={onPress}
+            disabled={disabled || isLoading}
         >
             <View style={styles.content}>
-                {icon && <View style={styles.iconContainer}>{icon}</View>}
-                {title ? <Text style={textStyle}>{title}</Text> : null}
-                {children}
+                {isLoading ? (
+                    <ActivityIndicator color={type === 'primary' ? "#FFF" : colors.primary} />
+                ) : (
+                    <>
+                        {icon && <View style={styles.iconContainer}>{icon}</View>}
+                        {title ? <Text style={textStyle}>{title}</Text> : null}
+                        {children}
+                    </>
+                )}
             </View>
         </TouchableOpacity>
     );
-}
+};
 
 const styles = StyleSheet.create({
     buttonPrimary: {
@@ -85,6 +97,9 @@ const styles = StyleSheet.create({
     },
     iconContainer: {
         marginRight: 10,
+    },
+    buttonDisabled: {
+        opacity: 0.5,
     },
 })
 

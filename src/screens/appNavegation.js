@@ -13,6 +13,7 @@ export default function AppNavigation() {
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
+            console.log("AppNavigation: estado de autenticação mudou. User:", user ? user.email : "null");
             if (user) {
                 setIsAuthenticated(true);
             } else {
