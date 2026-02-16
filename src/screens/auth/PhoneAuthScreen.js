@@ -94,9 +94,17 @@ export default function PhoneAuthScreen({ navigation }) {
                 recaptchaVerifier.current
             );
             setVerificationId(id);
+            console.log("Código enviado com sucesso. ID:", id);
             Alert.alert("Sucesso", "Código de verificação enviado!");
         } catch (err) {
-            Alert.alert("Erro", `Não foi possível enviar o código: ${err.message}`);
+            console.error("Erro completo do Firebase Phone Auth:", err);
+            let errorMessage = err.message;
+            if (err.code === 'auth/network-request-failed') {
+                errorMessage = "Erro de rede. Verifique se o seu celular tem internet e se as chaves do Firebase estão corretas.";
+            } else if (err.code === 'auth/invalid-phone-number') {
+                errorMessage = "Número de telefone inválido. Verifique o formato.";
+            }
+            Alert.alert("Erro", `Não foi possível enviar o código: ${errorMessage}`);
         } finally {
             setLoading(false);
         }
