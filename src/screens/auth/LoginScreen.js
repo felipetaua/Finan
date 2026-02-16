@@ -5,7 +5,7 @@ import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { FontAwesome } from '@expo/vector-icons';
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db, app } from '../../services/firebaseConfig';
 import { 
     useCreateUserWithEmailAndPassword, 
     useSignInWithEmailAndPassword 
@@ -13,8 +13,10 @@ import {
 import { 
     updateProfile, 
     GoogleAuthProvider, 
-    signInWithCredential 
+    signInWithCredential,
+    PhoneAuthProvider,
 } from "firebase/auth";
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { useOnboarding } from '../../context/OnboardingContext';
 import * as WebBrowser from 'expo-web-browser';
@@ -30,6 +32,13 @@ export default function LoginScreen({ navigation }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+    // Estados para Autenticação via Telefone
+    const recaptchaVerifier = React.useRef(null);
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [verificationId, setVerificationId] = useState('');
+    const [verificationCode, setVerificationCode] = useState('');
+    const [isPhoneModalVisible, setIsPhoneModalVisible] = useState(false);
 
     const [request, response, promptAsync] = Google.useAuthRequest({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
@@ -138,8 +147,37 @@ export default function LoginScreen({ navigation }) {
     const handleSocialLogin = async (type) => {
         if (type === 'google') {
             promptAsync();
-        } else {
-            Alert.alert("Aviso", "Login com Facebook será implementado em breve.");
+        } else if (type === 'phone') {
+            setIsPhoneModalVisible(true);
+        }
+    };
+
+    const handleSendVerificationCode = async () => {
+        try {
+            const phoneProvider = new PhoneAuthProvider(auth);
+            const verificationId = await phoneProvider.verifyPhoneNumber(
+                phoneNumber,
+                recaptchaVerifier.current
+            );
+            setVerificationId(verificationId);
+            Alert.alert("Sucesso", "Código de verificação enviado!");
+        } catch (err) {
+            Alert.alert("Erro", `Não foi possível enviar o código: ${err.message}`);
+        }
+    };
+
+    const handleConfirmVerificationCode = async () => {
+        try {
+            const credential = PhoneAuthProvider.credential(
+                verificationId,
+                verificationCode
+            );
+            await handleFirebaseSocialLogin(credential, 'phone');
+            setIsPhoneModalVisible(false);
+            setVerificationId('');
+            setVerificationCode('');
+        } catch (err) {
+            Alert.alert("Erro", "Código de verificação inválido.");
         }
     };
 
@@ -220,12 +258,51 @@ export default function LoginScreen({ navigation }) {
                         icon={<FontAwesome name="google" size={20} color="#EA4335" />}
                     />
                     <Button
-                        title="Continue com Facebook"
+                        title="Entrar com Telefone"
                         type="outline"
-                        onPress={() => handleSocialLogin('facebook')}
-                        icon={<FontAwesome name="facebook" size={20} color="#1877F2" />}
+                        onPress={() => handleSocialLogin('phone')}
+                        icon={<FontAwesome name="phone" size={20} color={theme.colors.primary} />}
                     />
                 </View>
+
+                {isPhoneModalVisible && (
+                    <View style={styles.phoneAuthContainer}>
+                        <Text style={styles.modalTitle}>Autenticação por Telefone</Text>
+                        {!verificationId ? (
+                            <>
+                                <Input
+                                    placeholder="+55 (11) 99999-9999"
+                                    value={phoneNumber}
+                                    onChangeText={setPhoneNumber}
+                                    keyboardType="phone-pad"
+                                />
+                                <Button title="Enviar Código" onPress={handleSendVerificationCode} />
+                            </>
+                        ) : (
+                            <>
+                                <Input
+                                    placeholder="Código de 6 dígitos"
+                                    value={verificationCode}
+                                    onChangeText={setVerificationCode}
+                                    keyboardType="number-pad"
+                                />
+                                <Button title="Confirmar Código" onPress={handleConfirmVerificationCode} />
+                                <TouchableOpacity onPress={() => setVerificationId('')}>
+                                    <Text style={styles.resendText}>Alterar número</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                        <TouchableOpacity onPress={() => setIsPhoneModalVisible(false)} style={styles.closeBtn}>
+                            <Text style={styles.closeBtnText}>Cancelar</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                <FirebaseRecaptchaVerifierModal
+                    ref={recaptchaVerifier}
+                    firebaseConfig={app.options}
+                    attemptInvisibleVerification={true}
+                />
 
                 <TouchableOpacity style={styles.helpLink}>
                     <Text style={styles.helpText}>Precisa de Ajuda para criar conta?</Text>
@@ -356,5 +433,41 @@ const styles = StyleSheet.create({
     },
     footerLink: {
         color: theme.colors.primary,
+    },
+    phoneAuthContainer: {
+        position: 'absolute',
+        top: '20%',
+        left: 20,
+        right: 20,
+        backgroundColor: '#FFF',
+        padding: 24,
+        borderRadius: 20,
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        zIndex: 1000,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        textAlign: 'center',
+        color: theme.colors.textPrimary,
+    },
+    resendText: {
+        textAlign: 'center',
+        marginTop: 10,
+        color: theme.colors.primary,
+        fontWeight: '600',
+    },
+    closeBtn: {
+        marginTop: 15,
+        alignItems: 'center',
+    },
+    closeBtnText: {
+        color: theme.colors.textSecondary,
+        fontWeight: '500',
     },
 });
