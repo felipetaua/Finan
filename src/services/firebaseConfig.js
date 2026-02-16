@@ -18,6 +18,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+console.log("Firebase initialized. API Key exists:", !!firebaseConfig.apiKey);
+
 const auth = Platform.OS === 'web' 
     ? getAuth(app) 
     : initializeAuth(app, {
