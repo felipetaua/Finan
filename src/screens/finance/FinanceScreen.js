@@ -1,17 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
 import FloatingActionButton from '../../components/finance/FloatingActionButton';
 
 const FinanceScreen = () => {
+  const insets = useSafeAreaInsets();
+  
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       <View style={styles.container}>
         <Text style={styles.title}>Finanças</Text>
         <Text style={styles.subtitle}>Gerencie suas transações</Text>
       </View>
       <FloatingActionButton />
-    </SafeAreaView>
+    </View>
   );
 };
 

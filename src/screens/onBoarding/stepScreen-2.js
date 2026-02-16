@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, SafeArea} from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import OnboardingHeader from '../../components/common/OnboardingHeader';
