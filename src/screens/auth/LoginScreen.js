@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
@@ -14,9 +14,7 @@ import {
     updateProfile, 
     GoogleAuthProvider, 
     signInWithCredential,
-    PhoneAuthProvider,
 } from "firebase/auth";
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { useOnboarding } from '../../context/OnboardingContext';
 import * as WebBrowser from 'expo-web-browser';
@@ -32,13 +30,6 @@ export default function LoginScreen({ navigation }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-
-    // Estados para Autenticação via Telefone
-    const recaptchaVerifier = React.useRef(null);
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [verificationId, setVerificationId] = useState('');
-    const [verificationCode, setVerificationCode] = useState('');
-    const [isPhoneModalVisible, setIsPhoneModalVisible] = useState(false);
 
     const [request, response, promptAsync] = Google.useAuthRequest({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
@@ -87,37 +78,52 @@ export default function LoginScreen({ navigation }) {
     ] = useSignInWithEmailAndPassword(auth);
 
     const handleContinue = async () => {
+        console.log("handleContinue chamado. isLogin:", isLogin);
         if (!email || !password) {
+            console.log("Email ou senha vazios");
             Alert.alert("Erro", "Por favor, preencha email e senha.");
             return;
         }
 
         if (!isLogin && !name) {
+            console.log("Nome vazio no cadastro");
             Alert.alert("Erro", "Por favor, preencha seu nome.");
             return;
         }
 
         try {
             if (!isLogin) {
-                // Criar conta
+                console.log("Tentando criar usuário com email:", email);
                 const result = await createUserWithEmailAndPassword(email, password);
+                console.log("Resultado createUser:", result ? "Objeto recebido" : "Undefined/Null");
+                
                 if (result && result.user) {
+                    console.log("Usuário criado. Atualizando perfil com nome:", name);
                     await updateProfile(result.user, { displayName: name });
                     
-                    // onboarding vinculados ao usuário
-                    await setDoc(doc(db, "users", result.user.uid), {
+                    console.log("Perfil atualizado. Salvando no Firestore...");
+                    const userRef = doc(db, "users", result.user.uid);
+                    await setDoc(userRef, {
                         name: name,
                         email: email,
-                        onboarding: onboardingData,
+                        onboarding: onboardingData || {},
                         createdAt: serverTimestamp()
                     });
+                    console.log("Firestore OK. O listener onAuthStateChanged deve disparar.");
+                } else {
+                    console.log("CreateUser não retornou usuário (pode ter falhado silenciosamente ou erro já capturado pelo hook)");
                 }
             } else {
-                // Fazer login
-                await signInWithEmailAndPassword(email, password);
+                console.log("Tentando fazer login com email:", email);
+                const result = await signInWithEmailAndPassword(email, password);
+                console.log("Resultado signIn:", result ? "Objeto recebido" : "Undefined/Null");
+                if (result) {
+                    console.log("Login OK. O listener onAuthStateChanged deve disparar.");
+                }
             }
         } catch (error) {
             console.error("Erro no handleContinue:", error);
+            Alert.alert("Erro de Autenticação", error.message || "Não foi possível realizar a operação.");
         }
     };
 
@@ -145,39 +151,18 @@ export default function LoginScreen({ navigation }) {
     };
 
     const handleSocialLogin = async (type) => {
+        console.log("handleSocialLogin chamado com tipo:", type);
         if (type === 'google') {
-            promptAsync();
+            try {
+                console.log("Iniciando promptAsync do Google...");
+                const result = await promptAsync();
+                console.log("Resultado promptAsync Google:", result?.type);
+            } catch (error) {
+                console.error("Erro ao abrir prompt do Google:", error);
+                Alert.alert("Erro", "Não foi possível abrir o login do Google.");
+            }
         } else if (type === 'phone') {
-            setIsPhoneModalVisible(true);
-        }
-    };
-
-    const handleSendVerificationCode = async () => {
-        try {
-            const phoneProvider = new PhoneAuthProvider(auth);
-            const verificationId = await phoneProvider.verifyPhoneNumber(
-                phoneNumber,
-                recaptchaVerifier.current
-            );
-            setVerificationId(verificationId);
-            Alert.alert("Sucesso", "Código de verificação enviado!");
-        } catch (err) {
-            Alert.alert("Erro", `Não foi possível enviar o código: ${err.message}`);
-        }
-    };
-
-    const handleConfirmVerificationCode = async () => {
-        try {
-            const credential = PhoneAuthProvider.credential(
-                verificationId,
-                verificationCode
-            );
-            await handleFirebaseSocialLogin(credential, 'phone');
-            setIsPhoneModalVisible(false);
-            setVerificationId('');
-            setVerificationCode('');
-        } catch (err) {
-            Alert.alert("Erro", "Código de verificação inválido.");
+            navigation.navigate('PhoneAuth');
         }
     };
 
@@ -237,11 +222,10 @@ export default function LoginScreen({ navigation }) {
                     ) : null}
 
                     <Button
-                        title={isLoading ? "" : (isLogin ? "Entrar" : "Cadastrar")}
+                        title={isLogin ? "Entrar" : "Cadastrar"}
                         onPress={handleContinue}
-                    >
-                        {isLoading && <ActivityIndicator color="#FFF" />}
-                    </Button>
+                        isLoading={isLoading}
+                    />
                 </View>
 
                 <View style={styles.separatorContainer}>
@@ -264,45 +248,6 @@ export default function LoginScreen({ navigation }) {
                         icon={<FontAwesome name="phone" size={20} color={theme.colors.primary} />}
                     />
                 </View>
-
-                {isPhoneModalVisible && (
-                    <View style={styles.phoneAuthContainer}>
-                        <Text style={styles.modalTitle}>Autenticação por Telefone</Text>
-                        {!verificationId ? (
-                            <>
-                                <Input
-                                    placeholder="+55 (11) 99999-9999"
-                                    value={phoneNumber}
-                                    onChangeText={setPhoneNumber}
-                                    keyboardType="phone-pad"
-                                />
-                                <Button title="Enviar Código" onPress={handleSendVerificationCode} />
-                            </>
-                        ) : (
-                            <>
-                                <Input
-                                    placeholder="Código de 6 dígitos"
-                                    value={verificationCode}
-                                    onChangeText={setVerificationCode}
-                                    keyboardType="number-pad"
-                                />
-                                <Button title="Confirmar Código" onPress={handleConfirmVerificationCode} />
-                                <TouchableOpacity onPress={() => setVerificationId('')}>
-                                    <Text style={styles.resendText}>Alterar número</Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
-                        <TouchableOpacity onPress={() => setIsPhoneModalVisible(false)} style={styles.closeBtn}>
-                            <Text style={styles.closeBtnText}>Cancelar</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                <FirebaseRecaptchaVerifierModal
-                    ref={recaptchaVerifier}
-                    firebaseConfig={app.options}
-                    attemptInvisibleVerification={true}
-                />
 
                 <TouchableOpacity style={styles.helpLink}>
                     <Text style={styles.helpText}>Precisa de Ajuda para criar conta?</Text>
@@ -369,11 +314,20 @@ const styles = StyleSheet.create({
     },
     toggleBtnActive: {
         backgroundColor: '#FFFFFF',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.1,
+                shadowRadius: 2,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
+            }
+        })
     },
     toggleBtnText: {
         fontSize: theme.fontSizes.sm,
@@ -433,41 +387,5 @@ const styles = StyleSheet.create({
     },
     footerLink: {
         color: theme.colors.primary,
-    },
-    phoneAuthContainer: {
-        position: 'absolute',
-        top: '20%',
-        left: 20,
-        right: 20,
-        backgroundColor: '#FFF',
-        padding: 24,
-        borderRadius: 20,
-        elevation: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        zIndex: 1000,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center',
-        color: theme.colors.textPrimary,
-    },
-    resendText: {
-        textAlign: 'center',
-        marginTop: 10,
-        color: theme.colors.primary,
-        fontWeight: '600',
-    },
-    closeBtn: {
-        marginTop: 15,
-        alignItems: 'center',
-    },
-    closeBtnText: {
-        color: theme.colors.textSecondary,
-        fontWeight: '500',
     },
 });
