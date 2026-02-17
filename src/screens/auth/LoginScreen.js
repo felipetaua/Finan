@@ -107,6 +107,9 @@ export default function LoginScreen({ navigation }) {
                         name: name,
                         email: email,
                         onboarding: onboardingData || {},
+                        plan: 'Gratuito',
+                        xp: 0,
+                        level: 1,
                         createdAt: serverTimestamp()
                     });
                     console.log("Firestore OK. O listener onAuthStateChanged deve disparar.");
@@ -139,6 +142,9 @@ export default function LoginScreen({ navigation }) {
                         name: result.user.displayName,
                         email: result.user.email,
                         onboarding: onboardingData,
+                        plan: 'Gratuito',
+                        xp: 0,
+                        level: 1,
                         createdAt: serverTimestamp(),
                         provider: type
                     });
