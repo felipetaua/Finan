@@ -8,6 +8,7 @@ import FinanceScreen from '../screens/finance/FinanceScreen';
 import GoalsScreen from '../screens/finance/GoalsScreen';
 import ProgressScreen from '../screens/finance/ProgressScreen';
 import ProfileStackNavigator from './ProfileStackNavigator';
+import RankingsScreen from '../screens/rankings/rankingsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -36,8 +37,8 @@ const BottomTabNavigator = () => {
       />
       <Tab.Screen 
         name="Goals" 
-        component={FinanceScreen}
-        options={{ title: 'Investimentos' }}
+        component={RankingsScreen}
+        options={{ title: 'Ranques' }}
       />
       <Tab.Screen 
         name="Profile" 
