@@ -293,7 +293,7 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.transactionsHeader}>
                     <Text style={styles.sectionTitle}>Transações</Text>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
                         <Text style={styles.seeAll}>Ver todos</Text>
                     </TouchableOpacity>
                 </View>
