@@ -6,6 +6,8 @@ import { theme } from '../../theme/theme';
 import FloatingActionButton from '../../components/finance/FloatingActionButton';
 import { Ionicons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import { auth, db } from '../../services/firebaseConfig';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
 const AnimatedSparklesButton = () => {
   const rotation = useRef(new Animated.Value(0)).current;
@@ -63,9 +65,37 @@ const CARDS = [
 ];
 
 const FinanceScreen = () => {
+  const user = auth.currentUser;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const [showBalance, setShowBalance] = useState(true);
+  const [userPlan, setUserPlan] = useState('Grátis');
+  const [userXP, setUserXP] = useState(0);
+  const [userLevel, setUserLevel] = useState(1);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const userRef = doc(db, "users", user.uid);
+    
+    const unsubscribe = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.plan) {
+          setUserPlan(data.plan);
+        } else {
+          setUserPlan('Gratuito');
+        }
+
+        if (data.xp !== undefined) setUserXP(data.xp);
+        if (data.level !== undefined) setUserLevel(data.level);
+      }
+    }, (error) => {
+      console.error("Erro ao carregar plano do usuário:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const renderTransaction = ({ item }) => (
     <View style={styles.transactionItem}>
@@ -97,14 +127,27 @@ const FinanceScreen = () => {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greetingHeader}>Bom dia, Username</Text>
-            <View style={styles.planContainer}>
-              <Text style={styles.planLabel}>Plano </Text>
-              <Text style={styles.planType}>Premium</Text>
+            <View style={styles.nameLevelRow}>
+              <Text style={styles.greetingHeader}>Bom dia, {user?.displayName || 'Usuário Finan'}</Text>
+              <View style={styles.levelBadge}>
+                <Text style={styles.levelText}>Lvl {userLevel}</Text>
+              </View>
+            </View>
+            <View style={styles.planAndXP}>
+              <View style={styles.planContainer}>
+                <Text style={styles.planLabel}>Plano </Text>
+                <Text style={[styles.planType, { color: userPlan === 'Premium' ? '#0ea5e9' : '#777' }]}>
+                  {userPlan}
+                </Text>
+              </View>
+              <View style={styles.xpDivider} />
+              <View style={styles.xpContainer}>
+                <Text style={styles.xpText}>{userXP} XP</Text>
+              </View>
             </View>
           </View>
           <View style={styles.headerIcons}>
-            <AnimatedSparklesButton />
+            {userPlan === 'Premium' && <AnimatedSparklesButton />}
             <TouchableOpacity style={styles.iconButton}>
               <Ionicons name="notifications-outline" size={24} color="#000" />
             </TouchableOpacity>
@@ -220,6 +263,46 @@ const styles = StyleSheet.create({
   planContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  nameLevelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  levelBadge: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  levelText: {
+    fontSize: 10,
+    color: '#b45309',
+    fontWeight: 'bold',
+  },
+  planAndXP: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  xpDivider: {
+    width: 1,
+    height: 10,
+    backgroundColor: '#DDD',
+    marginHorizontal: 8,
+  },
+  xpContainer: {
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  xpText: {
+    fontSize: 10,
+    color: '#6b7280',
+    fontWeight: '600',
   },
   planLabel: {
     fontSize: 14,
