@@ -1,5 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList, Platform, Animated, Easing } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  Image, 
+  FlatList, 
+  Platform, 
+  Animated, 
+  Easing, 
+  ActivityIndicator,
+  LayoutAnimation,
+  UIManager
+} from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
@@ -50,20 +68,6 @@ const AnimatedSparklesButton = () => {
   );
 };
 
-// Mock
-const TRANSACTIONS = [
-  { id: '1', title: 'Starbucks Coffe', subtitle: '29 Novembro 20:30', amount: '-R$44,80', icon: 'coffee', type: 'expense' },
-  { id: '2', title: 'Compra Amazon', subtitle: '30 Outubro 11:21', amount: '-R$74,23', icon: 'shopping', type: 'expense' },
-  { id: '3', title: 'Compra Mcdonalds', subtitle: '22 Outubro 20:13', amount: '-R$23,90', bonus: '+R$1,50', icon: 'food', type: 'expense' },
-  { id: '4', title: 'Assinatura Netflix', subtitle: '20 Agosto 19:36', amount: '-R$44,80', bonus: '+R$0,00', icon: 'netflix', type: 'expense' },
-  { id: '5', title: 'Compras Nike', subtitle: '12 Agosto 16:21', amount: '-R$449,80', bonus: '+R$2,50', icon: 'shoe-sneaker', type: 'expense' },
-];
-
-const CARDS = [
-  { id: '1', title: 'Finan', lastDigits: '2345', brand: 'VISA', color: '#3498db' },
-  { id: '2', title: 'Finan', lastDigits: '2345', brand: 'VISA', color: '#000000' },
-];
-
 const FinanceScreen = () => {
   const user = auth.currentUser;
   const insets = useSafeAreaInsets();
@@ -74,6 +78,36 @@ const FinanceScreen = () => {
   const [userLevel, setUserLevel] = useState(1);
   const [transactions, setTransactions] = useState([]);
   const [totalBalance, setTotalBalance] = useState(0);
+  const [userChallenges, setUserChallenges] = useState([]);
+  const [loadingChallenges, setLoadingChallenges] = useState(true);
+  const [collapsedChallenges, setCollapsedChallenges] = useState({});
+  const [isAllCollapsed, setIsAllCollapsed] = useState(false);
+  const [isEmptyCollapsed, setIsEmptyCollapsed] = useState(false);
+
+  const toggleChallenge = (id) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setCollapsedChallenges(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const toggleAll = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const newState = !isAllCollapsed;
+    setIsAllCollapsed(newState);
+    
+    const newStates = {};
+    userChallenges.forEach(c => {
+      newStates[c.id] = newState;
+    });
+    setCollapsedChallenges(newStates);
+  };
+
+  const toggleEmpty = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsEmptyCollapsed(!isEmptyCollapsed);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -120,9 +154,29 @@ const FinanceScreen = () => {
       console.error("Erro nas transações:", error);
     });
 
+    // Busca de desafios iniciados
+    const qChallenges = query(
+      collection(db, "user_challenges"),
+      where("userId", "==", user.uid),
+      where("status", "==", "active")
+    );
+
+    const unsubChallenges = onSnapshot(qChallenges, (snapshot) => {
+      const challengeList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setUserChallenges(challengeList);
+      setLoadingChallenges(false);
+    }, (error) => {
+      console.error("Erro nos desafios:", error);
+      setLoadingChallenges(false);
+    });
+
     return () => {
       unsubProfile();
       unsubTransactions();
+      unsubChallenges();
     };
   }, [user]);
 
@@ -162,12 +216,9 @@ const FinanceScreen = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1, marginRight: 10 }}>
             <View style={styles.nameLevelRow}>
-              <Text style={styles.greetingHeader}>Bom dia, {user?.displayName || 'Usuário Finan'}</Text>
-              <View style={styles.levelBadge}>
-                <Text style={styles.levelText}>Lvl {userLevel}</Text>
-              </View>
+              <Text style={styles.greetingHeader} numberOfLines={1}>Bom dia, {user?.displayName || 'Usuário Finan'}</Text>
             </View>
             <View style={styles.planAndXP}>
               <View style={styles.planContainer}>
@@ -178,7 +229,7 @@ const FinanceScreen = () => {
               </View>
               <View style={styles.xpDivider} />
               <View style={styles.xpContainer}>
-                <Text style={styles.xpText}>{userXP} XP</Text>
+                <Text style={styles.xpText}>Lvl {userLevel} • {userXP} XP</Text>
               </View>
             </View>
           </View>
@@ -207,14 +258,14 @@ const FinanceScreen = () => {
               <View style={[styles.actionIconContainer, { backgroundColor: '#E0F2FE' }]}>
                 <Ionicons name="pie-chart" size={22} color="#0ea5e9" />
               </View>
-              <Text style={styles.actionButtonLabel}>Analytics</Text>
+              <Text style={styles.actionButtonLabel}>Análises</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButtonItem} onPress={() => {}}>
               <View style={[styles.actionIconContainer, { backgroundColor: '#F0FDF4' }]}>
                 <MaterialCommunityIcons name="bank-plus" size={22} color="#22c55e" />
               </View>
-              <Text style={styles.actionButtonLabel}>Open Finance</Text>
+              <Text style={styles.actionButtonLabel}>Open Banking</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButtonItem} onPress={() => navigation.navigate('Transactions')}>
@@ -226,33 +277,121 @@ const FinanceScreen = () => {
           </View>
         </View>
 
-        {/* Cards Section */}
+        {/* Desafios Iniciados Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Seus Cartões</Text>
-          <TouchableOpacity style={styles.addCardButton}>
-            <Text style={styles.addCardText}>+ Novo cartão</Text>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>Desafios Iniciados</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.headerToggleIcon} 
+            onPress={userChallenges.length > 0 ? toggleAll : toggleEmpty}
+          >
+            <Ionicons 
+              name={
+                (userChallenges.length > 0 ? isAllCollapsed : isEmptyCollapsed)
+                  ? 'chevron-down-circle-outline' 
+                  : 'chevron-up-circle-outline'
+              } 
+              size={24} 
+              color={theme.colors.primary} 
+            />
           </TouchableOpacity>
         </View>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cardsScroll}>
-          {CARDS.map((card) => (
-            <View key={card.id} style={[styles.creditCard, { backgroundColor: card.color }]}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardBrandTitle}>{card.title}</Text>
-                <Text style={styles.cardBrand}>{card.brand}</Text>
-              </View>
-              <View style={styles.cardFooter}>
-                <View>
-                  <Text style={styles.cardLabel}>Cartão de Crédito</Text>
-                  <Text style={styles.cardNumber}>**** {card.lastDigits}</Text>
-                </View>
-                <TouchableOpacity style={styles.cardDetailsBtn}>
-                  <Text style={styles.cardDetailsText}>Detalhes</Text>
+
+        <View style={styles.iniciadosList}>
+          {loadingChallenges ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          ) : userChallenges.length > 0 ? (
+            userChallenges.map(item => {
+              const isCollapsed = collapsedChallenges[item.id];
+              return (
+                <TouchableOpacity 
+                  key={item.id} 
+                  style={[styles.iniciadoCard, isCollapsed && { paddingBottom: 16 }]} 
+                  activeOpacity={0.7} 
+                  onPress={() => toggleChallenge(item.id)}
+                >
+                  <View style={[styles.iniciadoIconBox, { backgroundColor: (item.color || '#EEE') + '15' }]}>
+                    {item.iconType === 'Ionicons' ? (
+                      <Ionicons name={item.iconName || 'rocket-outline'} size={24} color={item.color || '#000'} />
+                    ) : (
+                      <MaterialCommunityIcons name={item.iconName || 'rocket'} size={24} color={item.color || '#000'} />
+                    )}
+                  </View>
+                  <View style={styles.iniciadoMain}>
+                    <View style={[styles.iniciadoHeaderRow, isCollapsed && { marginBottom: 0 }]}>
+                      <Text style={styles.iniciadoTitleText}>{item.title}</Text>
+                      <TouchableOpacity 
+                        style={styles.minimizeButton} 
+                        onPress={() => toggleChallenge(item.id)}
+                      >
+                        <Ionicons 
+                          name={isCollapsed ? "chevron-down" : "chevron-up"} 
+                          size={18} 
+                          color="#CBD5E1" 
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    
+                    {!isCollapsed && (
+                      <>
+                        {/* Progress Bar */}
+                        <View style={styles.progressBarBg}>
+                          <View 
+                            style={[
+                              styles.progressBarFill, 
+                              { 
+                                width: `${Math.min(((item.currentAmount || 0) / (item.goalAmount || 1)) * 100, 100)}%`,
+                                backgroundColor: item.color || theme.colors.primary
+                              }
+                            ]} 
+                          />
+                        </View>
+                        
+                        <View style={styles.iniciadoFooterRow}>
+                          <Text style={styles.percentText}>
+                            {Math.round(((item.currentAmount || 0) / (item.goalAmount || 1)) * 100)}% completo
+                          </Text>
+                          <Text style={[styles.amountText, { color: item.color || '#22C55E' }]}>
+                            {formatCurrency(item.currentAmount || 0)}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
                 </TouchableOpacity>
-              </View>
+              );
+            })
+          ) : (
+            <View style={[styles.emptyStateContainer, isEmptyCollapsed && { paddingVertical: 12 }]}>
+              {isEmptyCollapsed ? (
+                <TouchableOpacity 
+                  style={styles.collapsedEmptyRow} 
+                  onPress={toggleEmpty}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="trophy-outline" size={18} color="#CBD5E1" />
+                  <Text style={styles.collapsedEmptyText}>Gerencie seus desafios aqui...</Text>
+                  <Ionicons name="chevron-down" size={16} color="#CBD5E1" />
+                </TouchableOpacity>
+              ) : (
+                <>
+                  <View style={styles.emptyIconCircle}>
+                      <Ionicons name="trophy-outline" size={32} color="#CBD5E1" />
+                  </View>
+                  <Text style={styles.emptyTitle}>Nenhum desafio ativo</Text>
+                  <Text style={styles.emptyDesc}>Comece um desafio para acompanhar suas economias de forma divertida!</Text>
+                  <TouchableOpacity 
+                      style={styles.emptyButton}
+                      onPress={() => navigation.navigate('AddChallenges')}
+                  >
+                      <Text style={styles.emptyButtonText}>Escolher Desafio</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
-          ))}
-        </ScrollView>
+          )}
+        </View>
 
         {/* Transactions Section */}
         <View style={styles.sectionHeader}>
@@ -308,19 +447,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  levelBadge: {
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#f59e0b',
-  },
-  levelText: {
-    fontSize: 10,
-    color: '#b45309',
-    fontWeight: 'bold',
   },
   planAndXP: {
     flexDirection: 'row',
@@ -463,65 +589,153 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: '#000',
   },
-  addCardButton: {
+  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+  },
+  headerAddIcon: {
+    padding: 2,
+  },
+  headerToggleIcon: {
+    padding: 6,
+    backgroundColor: '#3b82f615',
+    borderRadius: 12,
   },
   addCardText: {
     fontSize: 14,
-    color: '#AAA',
-  },
-  cardsScroll: {
-    marginBottom: 24,
-    marginHorizontal: -20,
-    paddingLeft: 20,
-  },
-  creditCard: {
-    width: 260,
-    height: 160,
-    borderRadius: 24,
-    padding: 20,
-    marginRight: 12,
-    justifyContent: 'space-between',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  cardBrandTitle: {
-    fontFamily: theme.fonts.title,
-    fontSize: 22,
-    color: '#FFF',
-  },
-  cardBrand: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  cardLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  cardNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-  cardDetailsBtn: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  cardDetailsText: {
-    fontSize: 12,
-    color: '#FFF',
+    color: theme.colors.primary,
     fontWeight: '600',
+  },
+  // Inciados Styles
+  iniciadosList: {
+    marginBottom: 20,
+  },
+  iniciadoCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  iniciadoIconBox: {
+    width: 50,
+    height: 50,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  iniciadoMain: {
+    flex: 1,
+  },
+  iniciadoHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  minimizeButton: {
+    padding: 4,
+  },
+  iniciadoTitleText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  iniciadoFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  percentText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  amountText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  // Empty State Styles
+  emptyStateContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  collapsedEmptyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    gap: 12,
+  },
+  collapsedEmptyText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  emptyIconCircle: {
+      width: 70,
+      height: 70,
+      borderRadius: 35,
+      backgroundColor: '#F8F9FA',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 15,
+  },
+  emptyTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#334155',
+      marginBottom: 8,
+  },
+  emptyDesc: {
+      fontSize: 13,
+      color: '#64748B',
+      textAlign: 'center',
+      marginBottom: 20,
+      lineHeight: 18,
+  },
+  emptyButton: {
+      backgroundColor: '#3b82f6',
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 15,
+  },
+  emptyButtonText: {
+      color: '#FFF',
+      fontWeight: '700',
+      fontSize: 14,
   },
   verTodos: {
     fontSize: 14,
