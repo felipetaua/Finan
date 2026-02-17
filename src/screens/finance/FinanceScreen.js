@@ -217,7 +217,7 @@ const FinanceScreen = () => {
               <Text style={styles.actionButtonLabel}>Open Finance</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButtonItem} onPress={() => {}}>
+            <TouchableOpacity style={styles.actionButtonItem} onPress={() => navigation.navigate('Transactions')}>
               <View style={[styles.actionIconContainer, { backgroundColor: '#FAF5FF' }]}>
                 <Ionicons name="receipt" size={22} color="#a855f7" />
               </View>
@@ -257,7 +257,7 @@ const FinanceScreen = () => {
         {/* Transactions Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Transações</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
             <Text style={styles.verTodos}>Ver todos</Text>
           </TouchableOpacity>
         </View>
