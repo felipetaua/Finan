@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import { View, Text, StyleSheet, Image, SafeArea, ScrollView} from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView} from 'react-native';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import SelectableOption from '../../components/common/SelectableOption';

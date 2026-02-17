@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import TrailIcon from '../../assets/icons/trail.svg';
 import WalletIcon from '../../assets/icons/wallet.svg';
 import GraphIcon from '../../assets/icons/graph.svg';
@@ -79,14 +79,20 @@ const styles = StyleSheet.create({
         borderTopColor: '#E5E7EB',
         paddingVertical: 8,
         paddingHorizontal: 16,
-        elevation: 8,
-        shadowColor: '#000',
-        shadowOffset: {
-        width: 0,
-        height: -2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 8,
+            },
+            web: {
+                boxShadow: '0px -2px 4px rgba(0, 0, 0, 0.1)',
+            }
+        })
     },
     tab: {
         flex: 1,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 
@@ -26,11 +26,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        shadowColor: theme.colors.primaryDark,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 1,
-        shadowRadius: 0,
-        elevation: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: theme.colors.primaryDark,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: `0px 4px 0px ${theme.colors.primaryDark}`,
+            },
+            default: {}
+        })
     },
     bannerContent: {
         flex: 1,
