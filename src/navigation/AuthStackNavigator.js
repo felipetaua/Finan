@@ -8,7 +8,7 @@ import StepScreen2 from '../screens/onBoarding/StepScreen-2';
 import StepScreen3 from '../screens/onBoarding/StepScreen-3';
 import StepScreen4 from '../screens/onBoarding/StepScreen-4';
 import StepScreen5 from '../screens/onBoarding/StepScreen-5';
-import RankingsScreen from '../screens/rankings/rankingsScreen';
+import RankingsScreen from '../screens/rankings/RankingsScreen';
 
 const Stack = createStackNavigator();
 

@@ -6,9 +6,8 @@ import BottomTab from '../components/common/BottomTab';
 import HomeScreen from '../screens/home/HomeScreen';
 import FinanceScreen from '../screens/finance/FinanceScreen';
 import GoalsScreen from '../screens/finance/GoalsScreen';
-import ProgressScreen from '../screens/finance/ProgressScreen';
 import ProfileStackNavigator from './ProfileStackNavigator';
-import RankingsScreen from '../screens/rankings/rankingsScreen';
+import RankingsScreen from '../screens/rankings/RankingsScreen';
 
 const Tab = createBottomTabNavigator();
 
