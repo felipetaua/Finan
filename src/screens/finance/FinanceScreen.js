@@ -7,7 +7,7 @@ import FloatingActionButton from '../../components/finance/FloatingActionButton'
 import { Ionicons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { auth, db } from '../../services/firebaseConfig';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, orderBy, limit } from 'firebase/firestore';
 
 const AnimatedSparklesButton = () => {
   const rotation = useRef(new Animated.Value(0)).current;
@@ -72,47 +72,83 @@ const FinanceScreen = () => {
   const [userPlan, setUserPlan] = useState('Grátis');
   const [userXP, setUserXP] = useState(0);
   const [userLevel, setUserLevel] = useState(1);
+  const [transactions, setTransactions] = useState([]);
+  const [totalBalance, setTotalBalance] = useState(0);
 
   useEffect(() => {
     if (!user) return;
 
     const userRef = doc(db, "users", user.uid);
-    
-    const unsubscribe = onSnapshot(userRef, (docSnap) => {
+    const unsubProfile = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        if (data.plan) {
-          setUserPlan(data.plan);
-        } else {
-          setUserPlan('Gratuito');
-        }
-
+        if (data.plan) setUserPlan(data.plan);
         if (data.xp !== undefined) setUserXP(data.xp);
         if (data.level !== undefined) setUserLevel(data.level);
       }
-    }, (error) => {
-      console.error("Erro ao carregar plano do usuário:", error);
     });
 
-    return () => unsubscribe();
+    // Busca de transações em tempo real
+    const q = query(
+      collection(db, "transactions"),
+      where("userId", "==", user.uid)
+    );
+
+    const unsubTransactions = onSnapshot(q, (snapshot) => {
+      let transList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Ordenação local (descendente por data)
+      transList.sort((a, b) => {
+        const dateA = a.date?.seconds || 0;
+        const dateB = b.date?.seconds || 0;
+        return dateB - dateA;
+      });
+
+      setTransactions(transList.slice(0, 10));
+
+      // Cálculo simplificado do saldo
+      let total = 0;
+      transList.forEach(t => {
+        if (t.type === 'income') total += t.amount;
+        else total -= t.amount;
+      });
+      setTotalBalance(total);
+    }, (error) => {
+      console.error("Erro nas transações:", error);
+    });
+
+    return () => {
+      unsubProfile();
+      unsubTransactions();
+    };
   }, [user]);
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
 
   const renderTransaction = ({ item }) => (
     <View style={styles.transactionItem}>
-      <View style={styles.transactionIconContainer}>
-        <MaterialCommunityIcons name={item.icon} size={24} color={theme.colors.textPrimary} />
+      <View style={[styles.transactionIconContainer, { borderColor: item.categoryColor || '#EEE' }]}>
+        <MaterialCommunityIcons 
+          name={item.categoryIcon || 'cash'} 
+          size={24} 
+          color={item.categoryColor || theme.colors.textPrimary} 
+        />
       </View>
       <View style={styles.transactionInfo}>
-        <Text style={styles.transactionTitle}>{item.title}</Text>
-        <Text style={styles.transactionSubtitle}>{item.subtitle}</Text>
+        <Text style={styles.transactionTitle}>{item.description}</Text>
+        <Text style={styles.transactionSubtitle}>
+          {item.date ? new Date(item.date.seconds * 1000).toLocaleDateString('pt-BR') : 'Recent'}
+        </Text>
       </View>
       <View style={styles.transactionAmountContainer}>
-        <Text style={styles.transactionAmount}>{item.amount}</Text>
-        {item.bonus && (
-          <View style={styles.bonusBadge}>
-            <Text style={styles.bonusText}>{item.bonus}</Text>
-          </View>
-        )}
+        <Text style={[styles.transactionAmount, { color: item.type === 'expense' ? '#FF5252' : '#4CAF50' }]}>
+          {item.type === 'expense' ? '-' : '+'}{formatCurrency(item.amount)}
+        </Text>
       </View>
     </View>
   );
@@ -159,7 +195,7 @@ const FinanceScreen = () => {
           <Text style={styles.balanceLabel}>Seu saldo</Text>
           <View style={styles.balanceValueRow}>
             <Text style={styles.balanceValue}>
-              {showBalance ? 'R$ 10.003.500,00' : 'R$ ••••••••'}
+              {showBalance ? formatCurrency(totalBalance) : 'R$ ••••••••'}
             </Text>
             <TouchableOpacity onPress={() => setShowBalance(!showBalance)}>
               <Ionicons name={showBalance ? "eye-outline" : "eye-off-outline"} size={24} color={theme.colors.textSecondary} />
@@ -227,11 +263,15 @@ const FinanceScreen = () => {
         </View>
 
         <View style={styles.transactionsList}>
-          {TRANSACTIONS.map(item => (
-            <View key={item.id}>
-              {renderTransaction({ item })}
-            </View>
-          ))}
+          {transactions.length > 0 ? (
+            transactions.map(item => (
+              <View key={item.id}>
+                {renderTransaction({ item })}
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>Nenhuma transação encontrada.</Text>
+          )}
         </View>
       </ScrollView>
       
@@ -486,6 +526,12 @@ const styles = StyleSheet.create({
   verTodos: {
     fontSize: 14,
     color: '#AAA',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#9CA3AF',
+    paddingVertical: 20,
+    fontSize: 14,
   },
   transactionsList: {
     backgroundColor: '#FFF',
