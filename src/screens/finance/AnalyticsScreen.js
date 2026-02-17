@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -63,6 +63,19 @@ const DonutChart = ({ size = 230, strokeWidth = 20, data }) => {
 const AnalyticsScreen = () => {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation();
+    
+    const [currentDate, setCurrentDate] = useState(new Date());
+
+    const months = [
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+
+    const changeDate = (num) => {
+        const newDate = new Date(currentDate);
+        newDate.setMonth(newDate.getMonth() + num);
+        setCurrentDate(newDate);
+    };
 
     const renderTransaction = ({ item }) => (
         <View style={styles.transactionItem}>
@@ -86,13 +99,30 @@ const AnalyticsScreen = () => {
                 </TouchableOpacity>
                 <Text style={styles.title}>Analytics</Text>
             </View>
-            <TouchableOpacity style={styles.dropdown}>
-            <Text style={styles.dropdownText}>Month</Text>
-            <Ionicons name="chevron-down" size={16} color="#000" />
+            <TouchableOpacity 
+                style={styles.headerSettings} 
+                onPress={() => console.log('Configurações de gráfico')}
+            >
+                <Ionicons name="options-outline" size={22} color="#000" />
             </TouchableOpacity>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            <View style={styles.dateSelector}>
+                <TouchableOpacity onPress={() => changeDate(-1)} style={styles.arrowButton}>
+                    <Ionicons name="chevron-back" size={20} color={theme.colors.textPrimary} />
+                </TouchableOpacity>
+                
+                <View style={styles.dateInfo}>
+                    <Text style={styles.monthDisplay}>{months[currentDate.getMonth()]}</Text>
+                    <Text style={styles.yearDisplay}>{currentDate.getFullYear()}</Text>
+                </View>
+
+                <TouchableOpacity onPress={() => changeDate(1)} style={styles.arrowButton}>
+                    <Ionicons name="chevron-forward" size={20} color={theme.colors.textPrimary} />
+                </TouchableOpacity>
+            </View>
+
             <View style={styles.chartContainer}>
                 <DonutChart data={DATA} />
             </View>
@@ -150,21 +180,45 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#000',
   },
-  dropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  headerSettings: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: '#F3F4F6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  dropdownText: {
-    fontSize: 14,
-    color: '#000',
-    marginRight: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollContent: {
     paddingBottom: 40,
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    gap: 20,
+  },
+  arrowButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dateInfo: {
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  monthDisplay: {
+    fontFamily: theme.fonts.title,
+    fontSize: 18,
+    color: '#000',
+  },
+  yearDisplay: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: -2,
   },
   chartContainer: {
     alignItems: 'center',
