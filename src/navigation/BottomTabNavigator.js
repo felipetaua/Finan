@@ -4,7 +4,7 @@ import { Image } from 'react-native';
 import BottomTab from '../components/common/BottomTab';
 
 import HomeScreen from '../screens/home/HomeScreen';
-import FinanceScreen from '../screens/finance/FinanceScreen';
+import FinanceStackNavigator from './FinanceStackNavigator';
 import GoalsScreen from '../screens/finance/GoalsScreen';
 import ProfileStackNavigator from './ProfileStackNavigator';
 import RankingsScreen from '../screens/rankings/RankingsScreen';
@@ -26,7 +26,7 @@ const BottomTabNavigator = () => {
       />
       <Tab.Screen 
         name="Wallet" 
-        component={FinanceScreen}
+        component={FinanceStackNavigator}
         options={{ title: 'Carteira' }}
       />
       <Tab.Screen 
