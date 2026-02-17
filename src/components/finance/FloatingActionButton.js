@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
 
 const FloatingActionButton = () => {
+    const navigation = useNavigation();
     const [isOpen, setIsOpen] = useState(false);
     const [animation] = useState(new Animated.Value(0));
 
@@ -15,6 +17,11 @@ const FloatingActionButton = () => {
             useNativeDriver: true,
         }).start();
         setIsOpen(!isOpen);
+    };
+
+    const handleNavigate = (type) => {
+        toggleMenu();
+        navigation.navigate('AddTransaction', { type });
     };
 
     const expenseStyle = {
@@ -49,14 +56,20 @@ const FloatingActionButton = () => {
     return (
         <View style={styles.container}>
             <Animated.View style={[styles.item, incomeStyle]}>
-                <TouchableOpacity style={[styles.subButton, { backgroundColor: theme.colors.success }]}>
+                <TouchableOpacity 
+                    style={[styles.subButton, { backgroundColor: theme.colors.success }]}
+                    onPress={() => handleNavigate('income')}
+                >
                     <MaterialCommunityIcons name="trending-up" size={24} color="white" />
                 </TouchableOpacity>
                 <Text style={styles.label}>Receita</Text>
             </Animated.View>
 
             <Animated.View style={[styles.item, expenseStyle]}>
-                <TouchableOpacity style={[styles.subButton, { backgroundColor: theme.colors.error }]}>
+                <TouchableOpacity 
+                    style={[styles.subButton, { backgroundColor: theme.colors.error }]}
+                    onPress={() => handleNavigate('expense')}
+                >
                     <MaterialCommunityIcons name="trending-down" size={24} color="white" />
                 </TouchableOpacity>
                 <Text style={styles.label}>Despesa</Text>
