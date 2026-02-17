@@ -9,6 +9,7 @@ export default function WelcomeScreen({ navigation }) {
             <Image
                 source={require('../../assets/images/splashart.png')}
                 style={styles.imageScreen}
+                resizeMode="contain"
             />
             <View style={styles.content}>
                 <Text style={[styles.title, { color: theme.colors.primary }]}>
@@ -44,7 +45,6 @@ const styles = StyleSheet.create({
     imageScreen: {
         width: 600, 
         height: "45%",
-        resizeMode: 'contain',
     },
     content: {
         alignItems: 'center',

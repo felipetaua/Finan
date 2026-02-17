@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { FontAwesome6, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 
@@ -18,7 +18,12 @@ const TrailNode = ({ node }) => {
             <TouchableOpacity 
                 style={[
                     styles.node, 
-                    { backgroundColor: node.color, shadowColor: node.color ? node.color : '#E5E5E5' },
+                    { backgroundColor: node.color },
+                    Platform.select({
+                        ios: { shadowColor: node.color || '#E5E5E5' },
+                        android: { elevation: 6 },
+                        web: { boxShadow: `0px 6px 0px ${node.color || '#E5E5E5'}` }
+                    }),
                     isLocked && styles.lockedNode
                 ]}
             >
@@ -50,14 +55,20 @@ const styles = StyleSheet.create({
         borderRadius: 35,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 1,
-        shadowRadius: 0,
-        elevation: 6,
+        ...Platform.select({
+            ios: {
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+            },
+        })
     },
     lockedNode: {
         backgroundColor: '#E5E5E5',
-        shadowColor: '#AFAFAF',
+        ...Platform.select({
+            ios: { shadowColor: '#AFAFAF' },
+            web: { boxShadow: '0px 6px 0px #AFAFAF' }
+        })
     },
     startBadge: {
         backgroundColor: theme.colors.surface,
@@ -68,11 +79,20 @@ const styles = StyleSheet.create({
         borderColor: '#E5E5E5',
         marginBottom: theme.spacing.sm,
         position: 'relative',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 2,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0px 2px 2px rgba(0, 0, 0, 0.1)',
+            }
+        })
     },
     startText: {
         color: theme.colors.primary,

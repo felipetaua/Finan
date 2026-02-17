@@ -4,10 +4,10 @@ import { Image } from 'react-native';
 import BottomTab from '../components/common/BottomTab';
 
 import HomeScreen from '../screens/home/HomeScreen';
-import FinanceScreen from '../screens/finance/FinanceScreen';
+import FinanceStackNavigator from './FinanceStackNavigator';
 import GoalsScreen from '../screens/finance/GoalsScreen';
-import ProgressScreen from '../screens/finance/ProgressScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
+import ProfileStackNavigator from './ProfileStackNavigator';
+import RankingsScreen from '../screens/rankings/RankingsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -26,7 +26,7 @@ const BottomTabNavigator = () => {
       />
       <Tab.Screen 
         name="Wallet" 
-        component={FinanceScreen}
+        component={FinanceStackNavigator}
         options={{ title: 'Carteira' }}
       />
       <Tab.Screen 
@@ -36,12 +36,12 @@ const BottomTabNavigator = () => {
       />
       <Tab.Screen 
         name="Goals" 
-        component={FinanceScreen}
-        options={{ title: 'Investimentos' }}
+        component={RankingsScreen}
+        options={{ title: 'Ranques' }}
       />
       <Tab.Screen 
         name="Profile" 
-        component={ProfileScreen}
+        component={ProfileStackNavigator}
         options={{ title: 'Perfil' }}
       />
     </Tab.Navigator>

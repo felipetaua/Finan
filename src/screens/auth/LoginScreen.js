@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { FontAwesome } from '@expo/vector-icons';
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db, app } from '../../services/firebaseConfig';
 import { 
     useCreateUserWithEmailAndPassword, 
     useSignInWithEmailAndPassword 
@@ -13,7 +13,7 @@ import {
 import { 
     updateProfile, 
     GoogleAuthProvider, 
-    signInWithCredential 
+    signInWithCredential,
 } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { useOnboarding } from '../../context/OnboardingContext';
@@ -78,37 +78,55 @@ export default function LoginScreen({ navigation }) {
     ] = useSignInWithEmailAndPassword(auth);
 
     const handleContinue = async () => {
+        console.log("handleContinue chamado. isLogin:", isLogin);
         if (!email || !password) {
+            console.log("Email ou senha vazios");
             Alert.alert("Erro", "Por favor, preencha email e senha.");
             return;
         }
 
         if (!isLogin && !name) {
+            console.log("Nome vazio no cadastro");
             Alert.alert("Erro", "Por favor, preencha seu nome.");
             return;
         }
 
         try {
             if (!isLogin) {
-                // Criar conta
+                console.log("Tentando criar usuário com email:", email);
                 const result = await createUserWithEmailAndPassword(email, password);
+                console.log("Resultado createUser:", result ? "Objeto recebido" : "Undefined/Null");
+                
                 if (result && result.user) {
+                    console.log("Usuário criado. Atualizando perfil com nome:", name);
                     await updateProfile(result.user, { displayName: name });
                     
-                    // onboarding vinculados ao usuário
-                    await setDoc(doc(db, "users", result.user.uid), {
+                    console.log("Perfil atualizado. Salvando no Firestore...");
+                    const userRef = doc(db, "users", result.user.uid);
+                    await setDoc(userRef, {
                         name: name,
                         email: email,
-                        onboarding: onboardingData,
+                        onboarding: onboardingData || {},
+                        plan: 'Gratuito',
+                        xp: 0,
+                        level: 1,
                         createdAt: serverTimestamp()
                     });
+                    console.log("Firestore OK. O listener onAuthStateChanged deve disparar.");
+                } else {
+                    console.log("CreateUser não retornou usuário (pode ter falhado silenciosamente ou erro já capturado pelo hook)");
                 }
             } else {
-                // Fazer login
-                await signInWithEmailAndPassword(email, password);
+                console.log("Tentando fazer login com email:", email);
+                const result = await signInWithEmailAndPassword(email, password);
+                console.log("Resultado signIn:", result ? "Objeto recebido" : "Undefined/Null");
+                if (result) {
+                    console.log("Login OK. O listener onAuthStateChanged deve disparar.");
+                }
             }
         } catch (error) {
             console.error("Erro no handleContinue:", error);
+            Alert.alert("Erro de Autenticação", error.message || "Não foi possível realizar a operação.");
         }
     };
 
@@ -124,6 +142,9 @@ export default function LoginScreen({ navigation }) {
                         name: result.user.displayName,
                         email: result.user.email,
                         onboarding: onboardingData,
+                        plan: 'Gratuito',
+                        xp: 0,
+                        level: 1,
                         createdAt: serverTimestamp(),
                         provider: type
                     });
@@ -136,10 +157,18 @@ export default function LoginScreen({ navigation }) {
     };
 
     const handleSocialLogin = async (type) => {
+        console.log("handleSocialLogin chamado com tipo:", type);
         if (type === 'google') {
-            promptAsync();
-        } else {
-            Alert.alert("Aviso", "Login com Facebook será implementado em breve.");
+            try {
+                console.log("Iniciando promptAsync do Google...");
+                const result = await promptAsync();
+                console.log("Resultado promptAsync Google:", result?.type);
+            } catch (error) {
+                console.error("Erro ao abrir prompt do Google:", error);
+                Alert.alert("Erro", "Não foi possível abrir o login do Google.");
+            }
+        } else if (type === 'phone') {
+            navigation.navigate('PhoneAuth');
         }
     };
 
@@ -199,11 +228,10 @@ export default function LoginScreen({ navigation }) {
                     ) : null}
 
                     <Button
-                        title={isLoading ? "" : (isLogin ? "Entrar" : "Cadastrar")}
+                        title={isLogin ? "Entrar" : "Cadastrar"}
                         onPress={handleContinue}
-                    >
-                        {isLoading && <ActivityIndicator color="#FFF" />}
-                    </Button>
+                        isLoading={isLoading}
+                    />
                 </View>
 
                 <View style={styles.separatorContainer}>
@@ -220,10 +248,10 @@ export default function LoginScreen({ navigation }) {
                         icon={<FontAwesome name="google" size={20} color="#EA4335" />}
                     />
                     <Button
-                        title="Continue com Facebook"
+                        title="Entrar com Telefone"
                         type="outline"
-                        onPress={() => handleSocialLogin('facebook')}
-                        icon={<FontAwesome name="facebook" size={20} color="#1877F2" />}
+                        onPress={() => handleSocialLogin('phone')}
+                        icon={<FontAwesome name="phone" size={20} color={theme.colors.primary} />}
                     />
                 </View>
 
@@ -292,11 +320,20 @@ const styles = StyleSheet.create({
     },
     toggleBtnActive: {
         backgroundColor: '#FFFFFF',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.1,
+                shadowRadius: 2,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
+            }
+        })
     },
     toggleBtnText: {
         fontSize: theme.fontSizes.sm,

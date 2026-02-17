@@ -1,53 +1,365 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { theme } from '../../theme/theme';
 import { auth } from '../../services/firebaseConfig';
-import { signOut } from 'firebase/auth';
 
-const ProfileScreen = () => {
-    const handleLogout = () => {
-        signOut(auth).catch(error => console.log('Erro ao sair:', error));
-    };
+const { width } = Dimensions.get('window');
+
+const ProfileScreen = ({ navigation }) => {
+    const user = auth.currentUser;
+
+    const creationDate = user?.metadata?.creationTime 
+        ? new Date(user.metadata.creationTime) 
+        : new Date();
+    
+    const formattedDate = creationDate.toLocaleDateString('pt-BR', {
+        month: 'long',
+        year: 'numeric'
+    });
+
+    const userShortCode = user?.uid ? user.uid.substring(0, 6).toUpperCase() : 'XXXXXX';
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Perfil</Text>
-            <Text style={styles.subtitle}>Gerencie suas informações</Text>
-            
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                <Text style={styles.logoutText}>Sair</Text>
-            </TouchableOpacity>
-        </View>
+        <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+                {/* Header Section with Character */}
+                <View style={styles.header}>
+                    <TouchableOpacity 
+                        style={styles.settingsButton} 
+                        onPress={() => navigation.navigate('Settings')}
+                    >
+                        <Ionicons name="settings-outline" size={28} color={theme.colors.textPrimary} />
+                    </TouchableOpacity>
+                    
+                    <View style={styles.characterContainer}>
+                        <Image 
+                            source={require('../../assets/images/fin.png')}
+                            style={styles.characterImage}
+                            resizeMode="contain"
+                        />
+                    </View>
+                </View>
+
+                {/* Profile Information */}
+                <View style={styles.content}>
+                    <View style={styles.profileInfo}>
+                        <Text style={styles.name}>{user?.displayName || 'Usuário Finan'}</Text>
+                        <Text style={styles.handle}>@{userShortCode} • Criado em {formattedDate}</Text>
+                    </View>
+
+                    {/* Stats Summary */}
+                    <View style={styles.statsContainer}>
+                        <View style={styles.statItem}>
+                            <Text style={styles.statValue}>+3</Text>
+                            <Text style={styles.statLabel}>Trilhas</Text>
+                        </View>
+                        <View style={styles.statDivider} />
+                        <View style={styles.statItem}>
+                            <Text style={styles.statValue}>11</Text>
+                            <Text style={styles.statLabel}>Seguidores</Text>
+                        </View>
+                        <View style={styles.statDivider} />
+                        <View style={styles.statItem}>
+                            <Text style={styles.statValue}>9</Text>
+                            <Text style={styles.statLabel}>Seguindo</Text>
+                        </View>
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View style={styles.actionsRow}>
+                        <TouchableOpacity style={styles.conviteButton}>
+                            <Ionicons name="person-add" size={20} color={theme.colors.primary} />
+                            <Text style={styles.conviteText}>Convite</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.shareButton}>
+                            <Ionicons name="share-outline" size={24} color={theme.colors.primary} />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Overview Section */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Overview</Text>
+                    </View>
+
+                    <View style={styles.overviewGrid}>
+                        <View style={styles.overviewCard}>
+                            <View style={styles.cardTopRow}>
+                                <MaterialCommunityIcons name="fire" size={24} color="#F97316" />
+                                <Text style={styles.cardValue}>12</Text>
+                            </View>
+                            <Text style={styles.cardLabel}>Day streak</Text>
+                        </View>
+
+                        <View style={styles.overviewCard}>
+                            <View style={styles.cardTopRow}>
+                                <MaterialCommunityIcons name="lightning-bolt" size={24} color="#FACC15" />
+                                <Text style={styles.cardValue}>9770</Text>
+                            </View>
+                            <Text style={styles.cardLabel}>Total XP</Text>
+                        </View>
+
+                        <View style={styles.overviewCard}>
+                            <View style={styles.cardTopRow}>
+                                <MaterialCommunityIcons name="trophy" size={24} color="#F59E0B" />
+                                <Text style={styles.cardValue}>Gold</Text>
+                            </View>
+                            <Text style={styles.cardLabel}>League</Text>
+                        </View>
+
+                        <View style={styles.overviewCard}>
+                            <View style={styles.cardTopRow}>
+                                <MaterialCommunityIcons name="folder-outline" size={24} color="#3B82F6" />
+                                <Text style={styles.cardValue}>14</Text>
+                            </View>
+                            <Text style={styles.cardLabel}>Cursos completos</Text>
+                        </View>
+                    </View>
+
+                    {/* Friend Streaks Section */}
+                    <View style={styles.friendStreaksCard}>
+                        <Text style={styles.friendStreaksTitle}>Friend Streaks</Text>
+                        <View style={styles.friendsRow}>
+                            {/* Active Friend Streak */}
+                            <View style={styles.friendItem}>
+                                <View style={styles.avatarWrapper}>
+                                    <View style={[styles.avatarCircle, { backgroundColor: '#C1F2B0' }]}>
+                                        <Image 
+                                            source={require('../../assets/images/fin.png')} 
+                                            style={styles.friendAvatarImage}
+                                            resizeMode="cover"
+                                        />
+                                    </View>
+                                    <View style={styles.activeStreakBadge}>
+                                        <MaterialCommunityIcons name="clock-outline" size={14} color="#999999" />
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Add Friends Slots */}
+                            {[1, 2, 3].map((index) => (
+                                <TouchableOpacity key={index} style={styles.addFriendSlot}>
+                                    <Ionicons name="add" size={28} color="#CCCCCC" />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                </View>
+            </ScrollView>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+    },
+    header: {
+        height: 220,
+        backgroundColor: '#63E6BE',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        paddingBottom: 0,
+    },
+    settingsButton: {
+        position: 'absolute',
+        top: 40,
+        right: 20,
+        padding: 5, 
+    },
+    characterContainer: {
+        width: 180,
+        height: 180,
+        marginBottom: -10,
+    },
+    characterImage: {
+        width: '100%',
+        height: '100%',
+    },
+    content: {
+        paddingHorizontal: 20,
+        paddingTop: 30,
+    },
+    profileInfo: {
+        marginBottom: 20,
+    },
+    name: {
+        fontFamily: theme.fonts.title,
+        fontSize: 28,
+        color: '#333333',
+        marginBottom: 4,
+    },
+    handle: {
+        fontSize: 14,
+        color: '#666666',
+        fontWeight: '500',
+    },
+    statsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 15,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#F3F4F6',
+        marginBottom: 20,
+    },
+    statItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    statDivider: {
+        width: 1,
+        height: '100%',
+        backgroundColor: '#E5E7EB',
+    },
+    statValue: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333333',
+    },
+    statLabel: {
+        fontSize: 14,
+        color: '#999999',
+        marginTop: 2,
+    },
+    actionsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 35,
+    },
+    conviteButton: {
+        flex: 1,
+        flexDirection: 'row',
+        height: 52,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: theme.colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    conviteText: {
+        color: theme.colors.primary,
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginLeft: 8,
+    },
+    shareButton: {
+        width: 52,
+        height: 52,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: theme.colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    title: {
+    sectionHeader: {
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontFamily: theme.fonts.title,
         fontSize: 24,
+        color: '#333333',
+    },
+    overviewGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+    overviewCard: {
+        width: (width - 55) / 2,
+        padding: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        marginBottom: 15,
+    },
+    cardTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    cardValue: {
+        fontSize: 18,
         fontWeight: 'bold',
-        color: '#111827',
-        marginBottom: 8,
+        color: '#333333',
+        marginLeft: 8,
     },
-    subtitle: {
-        fontSize: 16,
-        color: '#6B7280',
-        marginBottom: 32,
+    cardLabel: {
+        fontSize: 14,
+        color: '#999999',
+        fontWeight: '500',
+        marginLeft: 32, 
     },
-    logoutButton: {
-        backgroundColor: '#EF4444',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
+    friendStreaksCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        padding: 16,
+        marginTop: 10,
+        marginBottom: 30,
     },
-    logoutText: {
-        color: 'white',
-        fontWeight: 'bold',
-    }
+    friendStreaksTitle: {
+        fontFamily: theme.fonts.title,
+        fontSize: 24,
+        color: '#333333',
+        marginBottom: 16,
+    },
+    friendsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    friendItem: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarWrapper: {
+        position: 'relative',
+    },
+    avatarCircle: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
+    },
+    friendAvatarImage: {
+        width: '100%',
+        height: '100%',
+        marginTop: 5, 
+    },
+    activeStreakBadge: {
+        position: 'absolute',
+        bottom: -4,
+        right: 0,
+        backgroundColor: '#FFFFFF',
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 1.5,
+        borderColor: '#CCCCCC',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    addFriendSlot: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        borderWidth: 2,
+        borderColor: '#CCCCCC',
+        borderStyle: 'dashed',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
 });
 
 export default ProfileScreen;
