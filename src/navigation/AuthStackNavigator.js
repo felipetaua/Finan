@@ -9,6 +9,7 @@ import StepScreen3 from '../screens/onBoarding/StepScreen-3';
 import StepScreen4 from '../screens/onBoarding/StepScreen-4';
 import StepScreen5 from '../screens/onBoarding/StepScreen-5';
 import RankingsScreen from '../screens/rankings/RankingsScreen';
+import AnalyticsScreen from '../screens/finance/AnalyticsScreen';
 
 const Stack = createStackNavigator();
 
@@ -28,6 +29,7 @@ const AuthStackNavigator = () => {
             <Stack.Screen name="StepScreen3" component={StepScreen3} />
             <Stack.Screen name="StepScreen4" component={StepScreen4} />
             <Stack.Screen name="StepScreen5" component={StepScreen5} />
+            <Stack.Screen name="AnalyticsScreen" component={AnalyticsScreen} />
         </Stack.Navigator>
     );
 };
