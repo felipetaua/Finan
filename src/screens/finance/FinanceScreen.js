@@ -14,7 +14,8 @@ import {
   LayoutAnimation,
   UIManager,
   Modal,
-  Alert
+  Alert,
+  TextInput
 } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -27,7 +28,7 @@ import FloatingActionButton from '../../components/finance/FloatingActionButton'
 import { Ionicons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { auth, db } from '../../services/firebaseConfig';
-import { doc, getDoc, onSnapshot, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, orderBy, limit, updateDoc, increment } from 'firebase/firestore';
 
 const AnimatedSparklesButton = () => {
   const rotation = useRef(new Animated.Value(0)).current;
@@ -94,6 +95,11 @@ const FinanceScreen = () => {
   const [isAllCollapsed, setIsAllCollapsed] = useState(false);
   const [isEmptyCollapsed, setIsEmptyCollapsed] = useState(false);
   const [isBankingModalVisible, setIsBankingModalVisible] = useState(false);
+  const [selectedChallenge, setSelectedChallenge] = useState(null);
+  const [isChallengeModalVisible, setIsChallengeModalVisible] = useState(false);
+  const [challengeAmount, setChallengeAmount] = useState('');
+  const [challengeOp, setChallengeOp] = useState('add');
+  const [isSubmittingChallenge, setIsSubmittingChallenge] = useState(false);
 
   const toggleChallenge = (id) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -118,6 +124,28 @@ const FinanceScreen = () => {
   const toggleEmpty = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setIsEmptyCollapsed(!isEmptyCollapsed);
+  };
+
+  const handleUpdateChallengeValue = async () => {
+    if (!selectedChallenge || !challengeAmount || isSubmittingChallenge) return;
+    const value = parseFloat(challengeAmount.replace(',', '.'));
+    if (isNaN(value) || value <= 0) return;
+
+    setIsSubmittingChallenge(true);
+    try {
+      const challengeRef = doc(db, "user_challenges", selectedChallenge.id);
+      const finalValue = challengeOp === 'add' ? value : -value;
+      await updateDoc(challengeRef, {
+        currentAmount: increment(finalValue)
+      });
+      setChallengeAmount('');
+      setIsChallengeModalVisible(false);
+      setSelectedChallenge(null);
+    } catch (error) {
+      console.error("Error updating challenge:", error);
+    } finally {
+      setIsSubmittingChallenge(false);
+    }
   };
 
   useEffect(() => {
@@ -315,15 +343,20 @@ const FinanceScreen = () => {
           {loadingChallenges ? (
             <ActivityIndicator size="small" color={theme.colors.primary} />
           ) : userChallenges.length > 0 ? (
-            userChallenges.map(item => {
-              const isCollapsed = collapsedChallenges[item.id];
-              return (
-                <TouchableOpacity 
-                  key={item.id} 
-                  style={[styles.iniciadoCard, isCollapsed && { paddingBottom: 16 }]} 
-                  activeOpacity={0.7} 
-                  onPress={() => toggleChallenge(item.id)}
-                >
+            <>
+              {userChallenges.map(item => {
+                const isCollapsed = collapsedChallenges[item.id];
+                return (
+                  <TouchableOpacity 
+                    key={item.id} 
+                    style={[styles.iniciadoCard, isCollapsed && { paddingBottom: 16 }]} 
+                    activeOpacity={0.7} 
+                    onPress={() => toggleChallenge(item.id)}
+                    onLongPress={() => {
+                      setSelectedChallenge(item);
+                      setIsChallengeModalVisible(true);
+                    }}
+                  >
                   <View style={[styles.iniciadoIconBox, { backgroundColor: (item.color || '#EEE') + '15' }]}>
                     {item.iconType === 'Ionicons' ? (
                       <Ionicons name={item.iconName || 'rocket-outline'} size={24} color={item.color || '#000'} />
@@ -374,9 +407,22 @@ const FinanceScreen = () => {
                   </View>
                 </TouchableOpacity>
               );
-            })
-          ) : (
-            <View style={[styles.emptyStateContainer, isEmptyCollapsed && { paddingVertical: 12 }]}>
+            })}
+            
+            <TouchableOpacity 
+              style={styles.addMoreChallengesCard}
+              activeOpacity={0.6}
+              onPress={() => navigation.navigate('AddChallenges')}
+            >
+              <View style={styles.addMoreIconBox}>
+                <Ionicons name="add" size={24} color="#94A3B8" />
+              </View>
+              <Text style={styles.addMoreText}>Criar um novo desafio</Text>
+              <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+            </TouchableOpacity>
+          </>
+        ) : (
+          <View style={[styles.emptyStateContainer, isEmptyCollapsed && { paddingVertical: 12 }]}>
               {isEmptyCollapsed ? (
                 <TouchableOpacity 
                   style={styles.collapsedEmptyRow} 
@@ -476,6 +522,93 @@ const FinanceScreen = () => {
               <Text style={styles.modalSecondaryButtonText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isChallengeModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsChallengeModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+            <TouchableOpacity 
+                style={styles.modalBackgroundDismiss} 
+                activeOpacity={1} 
+                onPress={() => setIsChallengeModalVisible(false)} 
+            />
+            <View style={styles.challengeModalContent}>
+                <View style={styles.modalHeaderClose}>
+                    <Text style={styles.modalTitleDetail}>Ajustar Valores</Text>
+                    <TouchableOpacity onPress={() => setIsChallengeModalVisible(false)}>
+                        <Ionicons name="close" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+                
+                {selectedChallenge && (
+                    <View style={styles.challengeDetailBody}>
+                        <View style={styles.challengeInfoRow}>
+                            <View style={[styles.challengeIconCircle, { backgroundColor: '#333' }]}>
+                                {selectedChallenge.iconType === 'Ionicons' ? (
+                                    <Ionicons name={selectedChallenge.iconName || 'rocket-outline'} size={32} color={selectedChallenge.color || '#3b82f6'} />
+                                ) : (
+                                    <MaterialCommunityIcons name={selectedChallenge.iconName || 'rocket'} size={32} color={selectedChallenge.color || '#3b82f6'} />
+                                )}
+                            </View>
+                            <View>
+                                <Text style={styles.challengeDetailTitle}>{selectedChallenge.title}</Text>
+                                <Text style={styles.challengeDetailGoal}>Meta: {formatCurrency(selectedChallenge.goalAmount)}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.opToggleContainer}>
+                            <TouchableOpacity 
+                                style={[styles.opToggleButton, challengeOp === 'add' && styles.opToggleActiveAdd]}
+                                onPress={() => setChallengeOp('add')}
+                            >
+                                <Ionicons name="add-circle" size={18} color={challengeOp === 'add' ? '#FFF' : '#94A3B8'} />
+                                <Text style={[styles.opToggleText, challengeOp === 'add' && styles.opToggleTextActive]}>Adicionar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.opToggleButton, challengeOp === 'subtract' && styles.opToggleActiveSub]}
+                                onPress={() => setChallengeOp('subtract')}
+                            >
+                                <Ionicons name="remove-circle" size={18} color={challengeOp === 'subtract' ? '#FFF' : '#94A3B8'} />
+                                <Text style={[styles.opToggleText, challengeOp === 'subtract' && styles.opToggleTextActive]}>Retirar</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.challengeInputWrapper}>
+                            <Text style={styles.challengeCurrency}>R$</Text>
+                            <TextInput
+                                style={styles.challengeInput}
+                                placeholder="0,00"
+                                placeholderTextColor="#666"
+                                keyboardType="numeric"
+                                value={challengeAmount}
+                                onChangeText={setChallengeAmount}
+                            />
+                        </View>
+
+                        <TouchableOpacity 
+                            style={[
+                                styles.challengeConfirmBtn, 
+                                { backgroundColor: challengeOp === 'add' ? (selectedChallenge.color || '#3b82f6') : '#EF4444' }
+                            ]}
+                            onPress={handleUpdateChallengeValue}
+                            disabled={isSubmittingChallenge}
+                        >
+                            {isSubmittingChallenge ? (
+                                <ActivityIndicator color="#FFF" />
+                            ) : (
+                                <Text style={styles.challengeConfirmBtnText}>
+                                    {challengeOp === 'add' ? 'Confirmar Aporte' : 'Confirmar Retirada'}
+                                </Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
         </View>
       </Modal>
 
@@ -946,6 +1079,136 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  addMoreChallengesCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'rgba(235, 240, 245, 0.4)',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#E2E8F0',
+    marginTop: 10,
+    marginHorizontal: 4,
+  },
+  addMoreIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  addMoreText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  challengeModalContent: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 32,
+    padding: 24,
+    width: '100%',
+    maxWidth: 360,
+  },
+  modalHeaderClose: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitleDetail: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  challengeInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+    marginBottom: 25,
+  },
+  challengeIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  challengeDetailTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  challengeDetailGoal: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  opToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#2D2D2D',
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 20,
+  },
+  opToggleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  opToggleActiveAdd: {
+    backgroundColor: '#3b82f6',
+  },
+  opToggleActiveSub: {
+    backgroundColor: '#EF4444',
+  },
+  opToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  opToggleTextActive: {
+    color: '#FFF',
+  },
+  challengeInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D2D2D',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 60,
+    marginBottom: 20,
+  },
+  challengeCurrency: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFF',
+    marginRight: 10,
+  },
+  challengeInput: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  challengeConfirmBtn: {
+    height: 60,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  challengeConfirmBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 
