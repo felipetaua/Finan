@@ -10,7 +10,7 @@ const RankingsScreen = () => {
         <View style={[styles.safeArea, { paddingTop: insets.top }]}>
             <View style={styles.container}>
                 <Text style={styles.title}>Ranques de Trofeus</Text>
-                <Text style={styles.subtitle}>Gerencie suas transações</Text>
+                <Text style={styles.subtitle}>Competir pode ser uma escolha!</Text>
             </View>
         </View>
     );
