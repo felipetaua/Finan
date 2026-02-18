@@ -74,6 +74,14 @@ const FinanceScreen = () => {
   const user = auth.currentUser;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Bom dia';
+    if (hour >= 12 && hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
+
   const [showBalance, setShowBalance] = useState(true);
   const [userPlan, setUserPlan] = useState('Grátis');
   const [userXP, setUserXP] = useState(0);
@@ -221,7 +229,9 @@ const FinanceScreen = () => {
         <View style={styles.header}>
           <View style={{ flex: 1, marginRight: 10 }}>
             <View style={styles.nameLevelRow}>
-              <Text style={styles.greetingHeader} numberOfLines={1}>Bom dia, {user?.displayName || 'Usuário Finan'}</Text>
+              <Text style={styles.greetingHeader} numberOfLines={1}>
+                {getGreeting()}, {user?.displayName || 'Usuário Finan'}
+              </Text>
             </View>
             <View style={styles.planAndXP}>
               <View style={styles.planContainer}>
