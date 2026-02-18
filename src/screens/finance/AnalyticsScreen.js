@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Platform, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
@@ -8,19 +8,7 @@ import Svg, { Circle, G } from 'react-native-svg';
 import { auth, db } from '../../services/firebaseConfig';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 
-// mock
-const TRANSACTIONS = [
-    { id: '1', title: 'Airbnb', subtitle: 'Travel', amount: '-$100.00', icon: 'home', color: '#000', bgColor: '#F3F4F6' },
-    { id: '2', title: 'Anton E.', subtitle: 'Transfer', amount: '-$68.00', icon: 'credit-card', color: '#000', bgColor: '#F3F4F6' },
-    { id: '3', title: 'PS Store', subtitle: 'Electronics', amount: '-$143.00', icon: 'controller-classic', color: '#000', bgColor: '#F3F4F6' },
-];
-
-const DATA = [
-    { key: 'Shop', value: 32, color: '#10B981', label: 'Shop 32%' },
-    { key: 'Transfer', value: 14, color: '#3B82F6', label: 'Transfer 14%' },
-    { key: 'Travel', value: 28, color: '#F59E0B', label: 'Travel 28%' },
-    { key: 'Other', value: 26, color: '#1F2937', label: 'Other 26%' },
-];
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount }) => {
     const radius = (size - strokeWidth) / 2;
@@ -84,6 +72,11 @@ const AnalyticsScreen = () => {
     const [transactions, setTransactions] = useState([]);
     const [chartData, setChartData] = useState([]);
     const [totalExpenses, setTotalExpenses] = useState(0);
+    const [totalIncome, setTotalIncome] = useState(0);
+    const [savingsTotal, setSavingsTotal] = useState(0);
+    const [percentageSpent, setPercentageSpent] = useState(0);
+    const [percentageLeft, setPercentageLeft] = useState(0);
+    const [activePage, setActivePage] = useState(0);
 
     const months = [
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -124,10 +117,22 @@ const AnalyticsScreen = () => {
 
             setTransactions(filteredTrans);
 
-            // Calcular dados do gráfico (apenas despesas)
+            // Calcular totais
             const expenses = filteredTrans.filter(t => t.type === 'expense');
-            const total = expenses.reduce((acc, curr) => acc + curr.amount, 0);
-            setTotalExpenses(total);
+            const totalE = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+            
+            const income = filteredTrans.filter(t => t.type === 'income');
+            const totalI = income.reduce((acc, curr) => acc + curr.amount, 0);
+            
+            const savings = totalI - totalE;
+            const pSpent = totalI > 0 ? (totalE / totalI) * 100 : 0;
+            const pLeft = 100 - pSpent;
+
+            setTotalExpenses(totalE);
+            setTotalIncome(totalI);
+            setSavingsTotal(savings);
+            setPercentageSpent(pSpent);
+            setPercentageLeft(pLeft);
 
             const categoryMap = {};
             expenses.forEach(t => {
@@ -143,9 +148,9 @@ const AnalyticsScreen = () => {
 
             const data = Object.values(categoryMap).map(cat => ({
                 key: cat.key,
-                value: total > 0 ? (cat.amount / total) * 100 : 0,
+                value: totalE > 0 ? (cat.amount / totalE) * 100 : 0,
                 color: cat.color,
-                label: `${cat.key} ${total > 0 ? Math.round((cat.amount / total) * 100) : 0}%`
+                label: `${cat.key} ${totalE > 0 ? Math.round((cat.amount / totalE) * 100) : 0}%`
             }));
 
             setChartData(data);
@@ -186,7 +191,7 @@ const AnalyticsScreen = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={24} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Analytics</Text>
+                <Text style={styles.title}>Análise de Gastos</Text>
             </View>
             <TouchableOpacity 
                 style={styles.headerSettings} 
@@ -212,8 +217,69 @@ const AnalyticsScreen = () => {
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.chartContainer}>
-                <DonutChart data={chartData} totalAmount={totalExpenses} />
+            <View style={styles.horizontalContainer}>
+                <ScrollView 
+                    horizontal 
+                    pagingEnabled 
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={(e) => {
+                        const x = e.nativeEvent.contentOffset.x;
+                        const page = Math.round(x / SCREEN_WIDTH);
+                        if (page !== activePage) setActivePage(page);
+                    }}
+                    scrollEventThrottle={16}
+                >
+                    {/* Page 1: Gráfico de Rosca */}
+                    <View style={styles.chartSlide}>
+                        <DonutChart data={chartData} totalAmount={totalExpenses} />
+                    </View>
+
+                    {/* Page 2: Resumo de Métricas */}
+                    <View style={styles.statsSlide}>
+                        <View style={styles.metricsContainer}>
+                            <View style={styles.metricRow}>
+                                <View style={styles.metricItem}>
+                                    <Text style={styles.metricLabel}>Renda Total</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Text style={[styles.metricValue, { color: '#4CAF50' }]}>{formatCurrency(totalIncome)}</Text>
+                                    </View>
+                                </View>
+                                <View style={[styles.metricItem, { alignItems: 'flex-end' }]}>
+                                    <Text style={styles.metricLabel}>Despesa Total</Text>
+                                    <Text style={[styles.metricValue, { color: '#FF5252' }]}>{formatCurrency(totalExpenses)}</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.divider} />
+
+                            <View style={styles.metricRow}>
+                                <View style={styles.metricItem}>
+                                    <Text style={styles.metricLabel}>Percentual Gasto</Text>
+                                    <Text style={styles.metricValue}>{Math.round(percentageSpent)}%</Text>
+                                </View>
+                                <View style={[styles.metricItem, { alignItems: 'flex-end' }]}>
+                                    <Text style={styles.metricLabel}>Percentual Sobra</Text>
+                                    <Text style={styles.metricValue}>{Math.round(percentageLeft)}%</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.divider} />
+
+                            <View style={styles.metricItemFull}>
+                                <Text style={styles.metricLabel}>Sobra Total</Text>
+                                <Text style={[styles.metricValueLarge, { color: savingsTotal >= 0 ? '#4CAF50' : '#FF5252' }]}>
+                                    {formatCurrency(savingsTotal)}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                </ScrollView>
+                
+                {/* Indicadores de página */}
+                <View style={styles.paginationDots}>
+                    <View style={[styles.dot, activePage !== 0 && { opacity: 0.2 }]} />
+                    <View style={[styles.dot, activePage !== 1 && { opacity: 0.2 }]} />
+                </View>
             </View>
 
                 <View style={styles.legendContainer}>
@@ -227,7 +293,7 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.transactionsHeader}>
                     <Text style={styles.sectionTitle}>Transações</Text>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
                         <Text style={styles.seeAll}>Ver todos</Text>
                     </TouchableOpacity>
                 </View>
@@ -249,176 +315,237 @@ const AnalyticsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: 5,
-    marginRight: 10,
-  },
-  title: {
-    fontFamily: theme.fonts.title,
-    fontSize: 24,
-    color: '#000',
-  },
-  headerSettings: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  dateSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    gap: 20,
-  },
-  arrowButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dateInfo: {
-    alignItems: 'center',
-    minWidth: 120,
-  },
-  monthDisplay: {
-    fontFamily: theme.fonts.title,
-    fontSize: 18,
-    color: '#000',
-  },
-  yearDisplay: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: -2,
-  },
-  chartContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 30,
-  },
-  chartCenter: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  chartLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  chartValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  legendContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 30,
-    paddingHorizontal: 20,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  legendDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  legendText: {
-    fontSize: 10,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  transactionsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  sectionTitle: {
-    fontFamily: theme.fonts.title,
-    fontSize: 22,
-    color: '#000',
-  },
-  seeAll: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#9CA3AF',
-    marginTop: 20,
-    fontSize: 14,
-  },
-  transactionsList: {
-    paddingHorizontal: 20,
-  },
-  transactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    padding: 12,
-    borderRadius: 20,
-    marginBottom: 12,
-  },
-  transactionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  transactionInfo: {
-    flex: 1,
-  },
-  transactionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  transactionSubtitle: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 15,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    backButton: {
+        padding: 5,
+        marginRight: 10,
+    },
+    title: {
+        fontFamily: theme.fonts.title,
+        fontSize: 24,
+        color: '#000',
+    },
+    headerSettings: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    scrollContent: {
+        paddingBottom: 40,
+    },
+    dateSelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 10,
+        gap: 20,
+    },
+    arrowButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    dateInfo: {
+        alignItems: 'center',
+        minWidth: 120,
+    },
+    monthDisplay: {
+        fontFamily: theme.fonts.title,
+        fontSize: 18,
+        color: '#000',
+    },
+    yearDisplay: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        marginTop: -2,
+    },
+    horizontalContainer: {
+        width: '100%',
+        marginVertical: 20,
+    },
+    chartSlide: {
+        width: SCREEN_WIDTH,
+        alignItems: 'center',
+        paddingVertical: 10,
+    },
+    statsSlide: {
+        width: SCREEN_WIDTH,
+        paddingHorizontal: 20,
+        height: 250, 
+        justifyContent: 'center',
+    },
+    metricsContainer: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 24,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
+    metricRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    metricItem: {
+        flex: 1,
+    },
+    metricItemFull: {
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#F3F4F6',
+        marginVertical: 12,
+    },
+    metricLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    metricValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#000',
+    },
+    metricValueLarge: {
+        fontSize: 24,
+        fontWeight: '800',
+    },
+    paginationDots: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 12,
+        marginTop: 10,
+        marginBottom: 15,
+    },
+    dot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#000',
+    },
+    chartCenter: {
+        position: 'absolute',
+        alignItems: 'center',
+    },
+    chartLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    chartValue: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#000',
+    },
+    legendContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        gap: 10,
+        marginBottom: 30,
+        paddingHorizontal: 20,
+    },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
+    legendDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        marginRight: 6,
+    },
+    legendText: {
+        fontSize: 10,
+        color: '#374151',
+        fontWeight: '500',
+    },
+    transactionsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        marginBottom: 15,
+    },
+    sectionTitle: {
+        fontFamily: theme.fonts.title,
+        fontSize: 22,
+        color: '#000',
+    },
+    seeAll: {
+        fontSize: 14,
+        color: '#9CA3AF',
+    },
+    emptyText: {
+        textAlign: 'center',
+        color: '#9CA3AF',
+        marginTop: 20,
+        fontSize: 14,
+    },
+    transactionsList: {
+        paddingHorizontal: 20,
+    },
+    transactionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        padding: 12,
+        borderRadius: 20,
+        marginBottom: 12,
+    },
+    transactionIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 15,
+    },
+    transactionInfo: {
+        flex: 1,
+    },
+    transactionTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#000',
+    },
+    transactionSubtitle: {
+        fontSize: 12,
+        color: '#9CA3AF',
+    },
+    transactionAmount: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#000',
+    },
 });
 
 export default AnalyticsScreen;

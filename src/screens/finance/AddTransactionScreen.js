@@ -30,10 +30,11 @@ const CATEGORIES = {
         { id: '8', name: 'Outros', icon: 'dots-horizontal', color: '#8395a7' },
     ],
     income: [
-        { id: '9', name: 'Salário', icon: 'cash-multiple', color: '#10AC84' },
+        { id: '9', name: 'Salário', icon: 'cash', color: '#10AC84' },
         { id: '10', name: 'Investimentos', icon: 'chart-line', color: '#2E86DE' },
         { id: '11', name: 'Presente', icon: 'gift', color: '#FF9F43' },
         { id: '12', name: 'Vendas', icon: 'store', color: '#EE5253' },
+        { id: '14', name: 'Renda Extra', icon: 'cash-multiple', color: '#01a3a4' },
         { id: '13', name: 'Outros', icon: 'dots-horizontal', color: '#8395a7' },
     ]
 };
