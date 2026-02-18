@@ -12,7 +12,9 @@ import {
   Easing, 
   ActivityIndicator,
   LayoutAnimation,
-  UIManager
+  UIManager,
+  Modal,
+  Alert
 } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -83,6 +85,7 @@ const FinanceScreen = () => {
   const [collapsedChallenges, setCollapsedChallenges] = useState({});
   const [isAllCollapsed, setIsAllCollapsed] = useState(false);
   const [isEmptyCollapsed, setIsEmptyCollapsed] = useState(false);
+  const [isBankingModalVisible, setIsBankingModalVisible] = useState(false);
 
   const toggleChallenge = (id) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -261,7 +264,7 @@ const FinanceScreen = () => {
               <Text style={styles.actionButtonLabel}>Análises</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButtonItem} onPress={() => {}}>
+            <TouchableOpacity style={styles.actionButtonItem} onPress={() => setIsBankingModalVisible(true)}>
               <View style={[styles.actionIconContainer, { backgroundColor: '#F0FDF4' }]}>
                 <MaterialCommunityIcons name="bank-plus" size={22} color="#22c55e" />
               </View>
@@ -414,6 +417,58 @@ const FinanceScreen = () => {
         </View>
       </ScrollView>
       
+      <Modal
+        visible={isBankingModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsBankingModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackgroundDismiss} 
+            activeOpacity={1} 
+            onPress={() => setIsBankingModalVisible(false)} 
+          />
+          <View style={styles.modalContent}>
+            <View style={styles.bankLogosRow}>
+              <View style={[styles.bankCircle, { zIndex: 1 }]}>
+                <Image source={require('../../assets/images/nu.png')} style={styles.bankImage} />
+              </View>
+              <View style={[styles.bankCircle, { zIndex: 2, marginLeft: -15, borderWidth: 2, borderColor: '#262626' }]}>
+                <Image source={require('../../assets/images/itau.png')} style={styles.bankImage} />
+              </View>
+              <View style={[styles.bankCircle, { zIndex: 3, marginLeft: -15, borderWidth: 2, borderColor: '#262626' }]}>
+                <Image source={require('../../assets/images/inter.png')} style={styles.bankImage} />
+              </View>
+            </View>
+
+            <Text style={styles.modalTitle}>Vincular seu Banco!</Text>
+            <Text style={styles.modalSubtitle}>
+              Vincule sua conta do Finan com sua conta do banco para ter mais praticidade através do open banking.
+            </Text>
+
+            <TouchableOpacity 
+              style={styles.modalPrimaryButton} 
+              onPress={() => {
+                setIsBankingModalVisible(false);
+                setTimeout(() => {
+                  Alert.alert('Indisponível', 'Esta funcionalidade estará disponível em versões futuras do Finan!');
+                }, 500);
+              }}
+            >
+              <Text style={styles.modalPrimaryButtonText}>Vincular agora</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.modalSecondaryButton} 
+              onPress={() => setIsBankingModalVisible(false)}
+            >
+              <Text style={styles.modalSecondaryButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <FloatingActionButton />
     </View>
   );
@@ -801,6 +856,86 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#FFF',
     fontWeight: 'bold',
+  },
+  // Modal Open Banking Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalBackgroundDismiss: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  modalContent: {
+    backgroundColor: '#262626',
+    borderRadius: 32,
+    padding: 30,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 340,
+  },
+  bankLogosRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 25,
+  },
+  bankCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    backgroundColor: '#FFF',
+    overflow: 'hidden',
+  },
+  bankImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  modalTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#AAA',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 30,
+  },
+  modalPrimaryButton: {
+    backgroundColor: '#4A90E2',
+    width: '100%',
+    paddingVertical: 18,
+    borderRadius: 24,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalPrimaryButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalSecondaryButton: {
+    paddingVertical: 10,
+  },
+  modalSecondaryButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
