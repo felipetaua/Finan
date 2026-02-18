@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-const ProgressScreen = () => {
+const GoalsScreen = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Progresso</Text>
-      <Text style={styles.subtitle}>Acompanhe sua evolução</Text>
+      <Text style={styles.title}>Invista em seus objetivos</Text>
+      <Text style={styles.subtitle}>A liberdade financeira é um resultado!</Text>
     </View>
   );
 };
@@ -29,4 +29,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProgressScreen;
+export default GoalsScreen;
