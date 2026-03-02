@@ -11,7 +11,9 @@ const firebaseConfig = {
     projectId: "finan-4854e",
     storageBucket: "finan-4854e.firebasestorage.app",
     messagingSenderId: "911532524791",
-    appId: "1:911532524791:web:8c9530465db84a9e187ff2",
+    appId: Platform.OS === 'android' 
+        ? "1:911532524791:android:d047730cae9f4000187ff2" 
+        : "1:911532524791:web:8c9530465db84a9e187ff2",
     measurementId: "G-98QF2CPMTF"
 };
 

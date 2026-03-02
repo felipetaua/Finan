@@ -16,11 +16,9 @@ const SplashScreen = ({ onFinish }) => {
             <View style={styles.content}>
                 <Text style={[styles.title, { 
                     color: theme.colors.primary,
-                    fontFamily: theme.fonts.medium 
                 }]}>Finan</Text>
                 <Text style={[styles.subtitle, { 
                     color: theme.colors.textSecondary,
-                    fontFamily: theme.fonts.regular 
                 }]}>Educação Financeira</Text>
                 <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
             </View>

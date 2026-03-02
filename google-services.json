@@ -1,0 +1,99 @@
+{
+  "project_info": {
+    "project_number": "911532524791",
+    "firebase_url": "https://finan-4854e-default-rtdb.firebaseio.com",
+    "project_id": "finan-4854e",
+    "storage_bucket": "finan-4854e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:911532524791:android:b8de4a7ed5cd6994187ff2",
+        "android_client_info": {
+          "package_name": "com.example.controle_financeiro"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "911532524791-q48lu445uo5h7iheg4p26n586glenhqb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.controle_financeiro",
+            "certificate_hash": "464662681933669cdedd505470083c6aa878ba85"
+          }
+        },
+        {
+          "client_id": "911532524791-jtmtriuj505gt66ajfmgms0aacmmmk1c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvNFNTp2AhuTfSodOUEedt5yjuhPqDuzY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "911532524791-jtmtriuj505gt66ajfmgms0aacmmmk1c.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "911532524791-75b0joj6gtgpcvuriisckd1at01aerh3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.finan"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:911532524791:android:d047730cae9f4000187ff2",
+        "android_client_info": {
+          "package_name": "com.example.finan"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "911532524791-vrkjm41h1an6t02if2jltaft76buf5mk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.finan",
+            "certificate_hash": "464662681933669cdedd505470083c6aa878ba85"
+          }
+        },
+        {
+          "client_id": "911532524791-jtmtriuj505gt66ajfmgms0aacmmmk1c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvNFNTp2AhuTfSodOUEedt5yjuhPqDuzY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "911532524791-jtmtriuj505gt66ajfmgms0aacmmmk1c.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "911532524791-75b0joj6gtgpcvuriisckd1at01aerh3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.finan"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
