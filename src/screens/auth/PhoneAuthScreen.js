@@ -5,9 +5,8 @@ import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { FontAwesome } from '@expo/vector-icons';
-import { auth, db, app } from '../../services/firebaseConfig';
+import { auth, db } from '../../services/firebaseConfig';
 import { PhoneAuthProvider, signInWithCredential } from "firebase/auth";
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { useOnboarding } from '../../context/OnboardingContext';
 
@@ -152,6 +151,15 @@ export default function PhoneAuthScreen({ navigation }) {
         try {
             const phoneProvider = new PhoneAuthProvider(auth);
             const fullPhoneNumber = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
+            
+            // O componente recaptchaVerifier foi removido porque expo-firebase-recaptcha é obsoleto (unblock build)
+            // Para consertar, migre para @react-native-firebase/auth no seu projeto Expo.
+            if (!recaptchaVerifier.current) {
+                Alert.alert("Erro Técnico", "O Verificador de reCAPTCHA não está pronto. No SDK 50+, use React Native Firebase para login por telefone.");
+                setLoading(false);
+                return;
+            }
+
             const id = await phoneProvider.verifyPhoneNumber(
                 fullPhoneNumber,
                 recaptchaVerifier.current
@@ -284,13 +292,18 @@ export default function PhoneAuthScreen({ navigation }) {
                     )}
                 </View>
 
-                {Platform.OS !== 'web' && (
+                {/* 
+                  O componente FirebaseRecaptchaVerifierModal foi removido por ser obsoleto 
+                  no SDK 48+. Para usar Phone Auth no Expo moderno, recomendo migrar para
+                  @react-native-firebase/auth ou usar um sistema customizado de WebView.
+                */}
+                {/* {Platform.OS !== 'web' && (
                     <FirebaseRecaptchaVerifierModal
                         ref={recaptchaVerifier}
-                        firebaseConfig={app.options}
+                        firebaseConfig={auth.app.options}
                         attemptInvisibleVerification={true}
                     />
-                )}
+                )} */}
 
                 <Modal
                     visible={isCountryModalVisible}

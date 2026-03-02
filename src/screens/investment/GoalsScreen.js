@@ -4,8 +4,8 @@ import { View, Text, StyleSheet } from 'react-native';
 const GoalsScreen = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Metas</Text>
-      <Text style={styles.subtitle}>Alcance seus objetivos financeiros</Text>
+      <Text style={styles.title}>Invista em seus objetivos</Text>
+      <Text style={styles.subtitle}>A liberdade financeira é um resultado!</Text>
     </View>
   );
 };

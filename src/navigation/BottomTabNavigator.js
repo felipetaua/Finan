@@ -5,7 +5,7 @@ import BottomTab from '../components/common/BottomTab';
 
 import HomeScreen from '../screens/home/HomeScreen';
 import FinanceStackNavigator from './FinanceStackNavigator';
-import GoalsScreen from '../screens/finance/GoalsScreen';
+import GoalsScreen from '../screens/investment/GoalsScreen';
 import ProfileStackNavigator from './ProfileStackNavigator';
 import RankingsScreen from '../screens/rankings/RankingsScreen';
 
