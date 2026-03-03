@@ -12,15 +12,11 @@ import {
   Easing, 
   ActivityIndicator,
   LayoutAnimation,
-  UIManager,
   Modal,
   Alert,
   TextInput
 } from 'react-native';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
