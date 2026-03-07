@@ -1,14 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
-import { auth } from '../../services/firebaseConfig';
+import { auth, db } from '../../services/firebaseConfig';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
 const ProfileScreen = ({ navigation }) => {
     const user = auth.currentUser;
+
+    const [userXP, setUserXP] = useState(0);
+    const [userLevel, setUserLevel] = useState(1);
+
+    useEffect(() => {
+        if (!user) return;
+        const userRef = doc(db, 'users', user.uid);
+        const unsubscribe = onSnapshot(userRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.xp !== undefined) setUserXP(data.xp);
+                if (data.level !== undefined) setUserLevel(data.level);
+            }
+        });
+        return () => unsubscribe();
+    }, [user]);
 
     const creationDate = user?.metadata?.creationTime 
         ? new Date(user.metadata.creationTime) 
@@ -95,7 +112,7 @@ const ProfileScreen = ({ navigation }) => {
                         <View style={styles.overviewCard}>
                             <View style={styles.cardTopRow}>
                                 <MaterialCommunityIcons name="lightning-bolt" size={24} color="#FACC15" />
-                                <Text style={styles.cardValue}>9770</Text>
+                                <Text style={styles.cardValue}>{userXP}</Text>
                             </View>
                             <Text style={styles.cardLabel}>Total XP</Text>
                         </View>
