@@ -18,7 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { auth, db } from '../../services/firebaseConfig';
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, doc, updateDoc, increment, getDocs } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
@@ -116,6 +116,15 @@ const AddChallengesScreen = () => {
     const [operationType, setOperationType] = useState('add'); // 'add' or 'subtract'
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Reserva de Emergência
+    const [isEmergencyModalVisible, setIsEmergencyModalVisible] = useState(false);
+    const [emergencyName, setEmergencyName] = useState('Reserva de Emergência');
+    const [emergencyProfile, setEmergencyProfile] = useState('assalariado'); // 'assalariado' | 'empreendedor'
+    const [emergencyMonthlyExpense, setEmergencyMonthlyExpense] = useState('');
+    const [suggestedExpense, setSuggestedExpense] = useState(null);
+    const [suggestionMonths, setSuggestionMonths] = useState(0);
+    const [isFetchingSuggestion, setIsFetchingSuggestion] = useState(false);
+
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour >= 5 && hour < 12) return 'Bom dia';
@@ -137,18 +146,19 @@ const AddChallengesScreen = () => {
         return () => unsubscribe();
     }, [user]);
 
-    const startChallenge = async (template) => {
+    const startChallenge = async (template, overrides = {}) => {
         setIsTemplateModalVisible(false);
+        setIsEmergencyModalVisible(false);
         if (!user) return;
         try {
             await addDoc(collection(db, "user_challenges"), {
                 userId: user.uid,
                 templateId: template.id,
-                title: template.title,
+                title: overrides.title !== undefined ? overrides.title : template.title,
                 iconName: template.icon,
                 iconType: template.iconType,
                 color: template.color,
-                goalAmount: template.defaultGoal,
+                goalAmount: overrides.goalAmount !== undefined ? overrides.goalAmount : template.defaultGoal,
                 currentAmount: 0,
                 status: 'active',
                 createdAt: serverTimestamp(),
@@ -157,6 +167,76 @@ const AddChallengesScreen = () => {
             console.error("Error starting challenge:", error);
         }
     };
+
+    const handleTemplatePress = (item) => {
+        setIsTypeSelectionModalVisible(false);
+        setSelectedTemplate(item);
+        if (item.id === 'reserva-emergencia') {
+            setEmergencyName('Reserva de Emergência');
+            setEmergencyProfile('assalariado');
+            setEmergencyMonthlyExpense('');
+            setSuggestedExpense(null);
+            setIsEmergencyModalVisible(true);
+            fetchLastMonthExpenses();
+        } else {
+            setIsTemplateModalVisible(true);
+        }
+    };
+
+    const fetchLastMonthExpenses = async () => {
+        if (!user) return;
+        setIsFetchingSuggestion(true);
+        try {
+            const now = new Date();
+            // Janelas dos últimos 3 meses
+            const MONTHS = 3;
+            const windows = Array.from({ length: MONTHS }, (_, i) => {
+                const start = new Date(now.getFullYear(), now.getMonth() - (i + 1), 1);
+                const end = new Date(now.getFullYear(), now.getMonth() - i, 0, 23, 59, 59);
+                return { start, end };
+            });
+
+            const q = query(
+                collection(db, 'transactions'),
+                where('userId', '==', user.uid),
+                where('type', '==', 'expense')
+            );
+            const snapshot = await getDocs(q);
+
+            // Soma por mês
+            const totals = windows.map(({ start, end }) => {
+                let t = 0;
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (!data.date) return;
+                    const d = new Date(data.date.seconds * 1000);
+                    if (d >= start && d <= end) t += data.amount || 0;
+                });
+                return t;
+            });
+
+            // Considera apenas mêses que têm pelo menos algum gasto
+            const activeTotals = totals.filter(t => t > 0);
+            if (activeTotals.length === 0) {
+                setSuggestedExpense(null);
+                setSuggestionMonths(0);
+            } else {
+                const avg = activeTotals.reduce((a, b) => a + b, 0) / activeTotals.length;
+                setSuggestedExpense(avg);
+                setSuggestionMonths(activeTotals.length);
+            }
+        } catch (e) {
+            console.error('Erro ao buscar gastos:', e);
+        } finally {
+            setIsFetchingSuggestion(false);
+        }
+    };
+
+    const emergencyGoal = (() => {
+        const monthly = parseFloat(emergencyMonthlyExpense.replace(',', '.')) || 0;
+        const multiplier = emergencyProfile === 'empreendedor' ? 12 : 6;
+        return monthly * multiplier;
+    })();
 
     const handleUpdateChallengeValue = async () => {
         if (!selectedChallengeDetail || !amountToAdd || isSubmitting) return;
@@ -203,10 +283,7 @@ const AddChallengesScreen = () => {
         <TouchableOpacity 
             style={styles.categoryCard} 
             activeOpacity={0.7}
-            onPress={() => {
-                setSelectedTemplate(item);
-                setIsTemplateModalVisible(true);
-            }}
+            onPress={() => handleTemplatePress(item)}
         >
             <View style={[styles.categoryIconBox, { backgroundColor: item.color + '15' }]}>
                 {item.iconType === 'Ionicons' ? (
@@ -379,11 +456,7 @@ const AddChallengesScreen = () => {
                                 <TouchableOpacity 
                                     key={item.id}
                                     style={styles.selectionItem}
-                                    onPress={() => {
-                                        setIsTypeSelectionModalVisible(false);
-                                        setSelectedTemplate(item);
-                                        setIsTemplateModalVisible(true);
-                                    }}
+                                    onPress={() => handleTemplatePress(item)}
                                 >
                                     <View style={[styles.selectionIconBox, { backgroundColor: item.color + '15' }]}>
                                         {item.iconType === 'Ionicons' ? (
@@ -400,6 +473,134 @@ const AddChallengesScreen = () => {
                                 </TouchableOpacity>
                             ))}
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Reserva de Emergência Modal */}
+            <Modal
+                visible={isEmergencyModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIsEmergencyModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Reserva de Emergência</Text>
+                            <TouchableOpacity onPress={() => setIsEmergencyModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#000" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Nome da caixinha */}
+                        <Text style={styles.emergencyLabel}>Nome da caixinha</Text>
+                        <View style={styles.emergencyNameInput}>
+                            <TextInput
+                                style={styles.emergencyNameField}
+                                value={emergencyName}
+                                onChangeText={setEmergencyName}
+                                placeholder="Ex: Reserva de Emergência"
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        {/* Perfil */}
+                        <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Qual é o seu perfil?</Text>
+                        <View style={styles.emergencyProfileToggle}>
+                            <TouchableOpacity
+                                style={[styles.emergencyProfileBtn, emergencyProfile === 'assalariado' && styles.emergencyProfileBtnActive]}
+                                onPress={() => setEmergencyProfile('assalariado')}
+                            >
+                                <MaterialCommunityIcons
+                                    name="briefcase-outline"
+                                    size={18}
+                                    color={emergencyProfile === 'assalariado' ? '#FFF' : '#64748B'}
+                                />
+                                <Text style={[styles.emergencyProfileText, emergencyProfile === 'assalariado' && styles.emergencyProfileTextActive]}>
+                                    Assalariado
+                                </Text>
+                                <Text style={[styles.emergencyProfileMultiplier, emergencyProfile === 'assalariado' && { color: '#FFF' }]}>
+                                    6×
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.emergencyProfileBtn, emergencyProfile === 'empreendedor' && styles.emergencyProfileBtnActive]}
+                                onPress={() => setEmergencyProfile('empreendedor')}
+                            >
+                                <MaterialCommunityIcons
+                                    name="rocket-launch-outline"
+                                    size={18}
+                                    color={emergencyProfile === 'empreendedor' ? '#FFF' : '#64748B'}
+                                />
+                                <Text style={[styles.emergencyProfileText, emergencyProfile === 'empreendedor' && styles.emergencyProfileTextActive]}>
+                                    Empreendedor
+                                </Text>
+                                <Text style={[styles.emergencyProfileMultiplier, emergencyProfile === 'empreendedor' && { color: '#FFF' }]}>
+                                    12×
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Gastos mensais */}
+                        <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Gastos mensais</Text>
+                        {isFetchingSuggestion ? (
+                            <View style={styles.suggestionRow}>
+                                <ActivityIndicator size="small" color="#F87171" />
+                                <Text style={styles.suggestionLoadingText}>Analisando seus últimos meses...</Text>
+                            </View>
+                        ) : suggestedExpense !== null ? (
+                            <TouchableOpacity
+                                style={styles.suggestionBanner}
+                                onPress={() => setEmergencyMonthlyExpense(suggestedExpense.toFixed(2).replace('.', ','))}
+                                activeOpacity={0.7}
+                            >
+                                <MaterialCommunityIcons name="lightbulb-on-outline" size={16} color="#F87171" />
+                                <Text style={styles.suggestionText}>
+                                    Média dos últimos {suggestionMonths} {suggestionMonths === 1 ? 'mês' : 'meses'}:{' '}
+                                    <Text style={styles.suggestionValue}>{formatCurrency(suggestedExpense)}</Text>
+                                </Text>
+                                <Text style={styles.suggestionUse}>Usar</Text>
+                            </TouchableOpacity>
+                        ) : null}
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <TextInput
+                                style={styles.amountInput}
+                                placeholder="0,00"
+                                keyboardType="numeric"
+                                value={emergencyMonthlyExpense}
+                                onChangeText={setEmergencyMonthlyExpense}
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        {/* Meta calculada */}
+                        <View style={[styles.modalGoalBox, { marginTop: 18, backgroundColor: '#FFF1F1', borderRadius: 16 }]}>
+                            <View>
+                                <Text style={styles.modalGoalLabel}>Meta calculada</Text>
+                                <Text style={{ fontSize: 11, color: '#94A3B8' }}>
+                                    {emergencyProfile === 'empreendedor' ? '12 meses de gastos' : '6 meses de gastos'}
+                                </Text>
+                            </View>
+                            <Text style={[styles.modalGoalValue, { color: '#F87171', fontSize: 20 }]}>
+                                {formatCurrency(emergencyGoal)}
+                            </Text>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.modalStartButton, { backgroundColor: '#F87171', marginTop: 20 }]}
+                            onPress={() => {
+                                const template = CHALLENGE_TEMPLATES.find(t => t.id === 'reserva-emergencia');
+                                startChallenge(template, {
+                                    title: emergencyName.trim() || 'Reserva de Emergência',
+                                    goalAmount: emergencyGoal,
+                                });
+                            }}
+                            disabled={emergencyGoal <= 0}
+                        >
+                            <Text style={styles.modalStartButtonText}>Criar Reserva</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
@@ -1028,6 +1229,98 @@ const styles = StyleSheet.create({
         color: '#64748B',
         fontSize: 16,
         fontWeight: '600',
+    },
+    emergencyLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+        marginBottom: 8,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    emergencyNameInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingHorizontal: 14,
+        height: 52,
+    },
+    emergencyNameField: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#0F172A',
+    },
+    emergencyProfileToggle: {
+        flexDirection: 'row',
+        backgroundColor: '#E2E8F0',
+        borderRadius: 14,
+        padding: 4,
+        gap: 4,
+    },
+    emergencyProfileBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 10,
+        gap: 5,
+    },
+    emergencyProfileBtnActive: {
+        backgroundColor: '#F87171',
+    },
+    emergencyProfileText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    emergencyProfileTextActive: {
+        color: '#FFF',
+    },
+    emergencyProfileMultiplier: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#94A3B8',
+    },
+    suggestionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 10,
+    },
+    suggestionLoadingText: {
+        fontSize: 13,
+        color: '#94A3B8',
+    },
+    suggestionBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF1F1',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginBottom: 10,
+        gap: 6,
+        borderWidth: 1,
+        borderColor: '#FECACA',
+    },
+    suggestionText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#64748B',
+    },
+    suggestionValue: {
+        fontWeight: '700',
+        color: '#F87171',
+    },
+    suggestionUse: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#F87171',
     },
 });
 
