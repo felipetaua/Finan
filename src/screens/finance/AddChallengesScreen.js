@@ -135,6 +135,11 @@ const AddChallengesScreen = () => {
     const [weeksName, setWeeksName] = useState('52 Semanas');
     const [weeksStartValue, setWeeksStartValue] = useState('1');
 
+    // Guardando Dinheiro
+    const [isSavingsModalVisible, setIsSavingsModalVisible] = useState(false);
+    const [savingsName, setSavingsName] = useState('Guardando Dinheiro');
+    const [savingsGoalInput, setSavingsGoalInput] = useState('');
+
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour >= 5 && hour < 12) return 'Bom dia';
@@ -161,6 +166,7 @@ const AddChallengesScreen = () => {
         setIsEmergencyModalVisible(false);
         setIsChineseModalVisible(false);
         setIs52WeeksModalVisible(false);
+        setIsSavingsModalVisible(false);
         if (!user) return;
         try {
             await addDoc(collection(db, "user_challenges"), {
@@ -199,6 +205,10 @@ const AddChallengesScreen = () => {
             setWeeksName('52 Semanas');
             setWeeksStartValue('1');
             setIs52WeeksModalVisible(true);
+        } else if (item.id === 'guardando-dinheiro') {
+            setSavingsName('Guardando Dinheiro');
+            setSavingsGoalInput('');
+            setIsSavingsModalVisible(true);
         } else {
             setIsTemplateModalVisible(true);
         }
@@ -567,6 +577,67 @@ const AddChallengesScreen = () => {
                                 </TouchableOpacity>
                             ))}
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Guardando Dinheiro Modal */}
+            <Modal
+                visible={isSavingsModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIsSavingsModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Guardando Dinheiro</Text>
+                            <TouchableOpacity onPress={() => setIsSavingsModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#000" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.emergencyLabel}>Nome da caixinha</Text>
+                        <View style={styles.emergencyNameInput}>
+                            <TextInput
+                                style={styles.emergencyNameField}
+                                value={savingsName}
+                                onChangeText={setSavingsName}
+                                placeholder="Ex: Viagem, Notebook..."
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Meta de valor</Text>
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <TextInput
+                                style={styles.amountInput}
+                                placeholder="0,00"
+                                keyboardType="numeric"
+                                value={savingsGoalInput}
+                                onChangeText={setSavingsGoalInput}
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={[
+                                styles.modalStartButton,
+                                { backgroundColor: '#3b82f6', marginTop: 24, opacity: !savingsGoalInput || parseFloat(savingsGoalInput.replace(',', '.')) <= 0 ? 0.4 : 1 }
+                            ]}
+                            disabled={!savingsGoalInput || parseFloat(savingsGoalInput.replace(',', '.')) <= 0}
+                            onPress={() => {
+                                const template = CHALLENGE_TEMPLATES.find(t => t.id === 'guardando-dinheiro');
+                                const goal = parseFloat(savingsGoalInput.replace(',', '.'));
+                                startChallenge(template, {
+                                    title: savingsName.trim() || 'Guardando Dinheiro',
+                                    goalAmount: goal,
+                                });
+                            }}
+                        >
+                            <Text style={styles.modalStartButtonText}>Criar Caixinha</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
