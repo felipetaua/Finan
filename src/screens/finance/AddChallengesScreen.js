@@ -226,10 +226,27 @@ const AddChallengesScreen = () => {
                 i === slotIndex ? { ...s, picked: true } : s
             );
             const addedValue = slots[slotIndex].value;
-            await updateDoc(doc(db, 'user_challenges', selectedChallengeDetail.id), {
-                slots: newSlots,
-                currentAmount: increment(addedValue),
-            });
+            const challengeTitle = liveData?.title || selectedChallengeDetail.title || 'Desafio';
+            const challengeColor = liveData?.color || selectedChallengeDetail.color || '#3b82f6';
+            await Promise.all([
+                updateDoc(doc(db, 'user_challenges', selectedChallengeDetail.id), {
+                    slots: newSlots,
+                    currentAmount: increment(addedValue),
+                }),
+                addDoc(collection(db, 'transactions'), {
+                    userId: user.uid,
+                    type: 'expense',
+                    amount: addedValue,
+                    description: challengeTitle,
+                    category: 'Desafio',
+                    categoryIcon: 'piggy-bank',
+                    categoryColor: challengeColor,
+                    isFixed: false,
+                    details: '',
+                    date: serverTimestamp(),
+                    createdAt: serverTimestamp(),
+                }),
+            ]);
         } catch (e) {
             console.error('Erro ao marcar slot:', e);
         } finally {
@@ -348,20 +365,39 @@ const AddChallengesScreen = () => {
         const value = parseFloat(amountToAdd.replace(',', '.'));
         if (isNaN(value) || value <= 0) return;
 
+        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail.id);
+        const challengeTitle = liveData?.title || selectedChallengeDetail.title || 'Desafio';
+        const challengeColor = liveData?.color || selectedChallengeDetail.color || '#3b82f6';
+        const isDeposit = operationType === 'add';
+        const finalValue = isDeposit ? value : -value;
+
         setIsSubmitting(true);
         try {
-            const challengeRef = doc(db, "user_challenges", selectedChallengeDetail.id);
-            const finalValue = operationType === 'add' ? value : -value;
-            
-            await updateDoc(challengeRef, {
-                currentAmount: increment(finalValue)
-            });
-            
+            const challengeRef = doc(db, 'user_challenges', selectedChallengeDetail.id);
+            await Promise.all([
+                updateDoc(challengeRef, {
+                    currentAmount: increment(finalValue)
+                }),
+                addDoc(collection(db, 'transactions'), {
+                    userId: user.uid,
+                    type: isDeposit ? 'expense' : 'income',
+                    amount: value,
+                    description: challengeTitle,
+                    category: 'Desafio',
+                    categoryIcon: 'piggy-bank',
+                    categoryColor: challengeColor,
+                    isFixed: false,
+                    details: '',
+                    date: serverTimestamp(),
+                    createdAt: serverTimestamp(),
+                }),
+            ]);
+
             setAmountToAdd('');
             setIsDetailModalVisible(false);
             setSelectedChallengeDetail(null);
         } catch (error) {
-            console.error("Error updating challenge value:", error);
+            console.error('Error updating challenge value:', error);
         } finally {
             setIsSubmitting(false);
         }
