@@ -219,6 +219,8 @@ const FinanceScreen = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
+  const maskCurrency = (value) => showBalance ? formatCurrency(value) : 'R$ ••••';
+
   const renderTransaction = ({ item }) => (
     <View style={styles.transactionItem}>
       <View style={[styles.transactionIconContainer, { borderColor: item.categoryColor || '#EEE' }]}>
@@ -236,7 +238,7 @@ const FinanceScreen = () => {
       </View>
       <View style={styles.transactionAmountContainer}>
         <Text style={[styles.transactionAmount, { color: item.type === 'expense' ? '#FF5252' : '#4CAF50' }]}>
-          {item.type === 'expense' ? '-' : '+'}{formatCurrency(item.amount)}
+          {showBalance ? (item.type === 'expense' ? '-' : '+') : ''}{showBalance ? formatCurrency(item.amount) : 'R$ ••••'}
         </Text>
       </View>
     </View>
@@ -408,7 +410,7 @@ const FinanceScreen = () => {
                                 : `Semana ${pickedSlots} de ${totalSlots}`}
                             </Text>
                             <Text style={[styles.amountText, { color: item.color || '#22C55E' }]}>
-                              {formatCurrency(item.currentAmount || 0)}
+                              {maskCurrency(item.currentAmount || 0)}
                             </Text>
                           </View>
                         </>
@@ -431,7 +433,7 @@ const FinanceScreen = () => {
                               {Math.round(((item.currentAmount || 0) / (item.goalAmount || 1)) * 100)}% completo
                             </Text>
                             <Text style={[styles.amountText, { color: item.color || '#22C55E' }]}>
-                              {formatCurrency(item.currentAmount || 0)}
+                              {maskCurrency(item.currentAmount || 0)}
                             </Text>
                           </View>
                         </>
