@@ -125,6 +125,11 @@ const AddChallengesScreen = () => {
     const [suggestionMonths, setSuggestionMonths] = useState(0);
     const [isFetchingSuggestion, setIsFetchingSuggestion] = useState(false);
 
+    // Desafio Chinês
+    const [isChineseModalVisible, setIsChineseModalVisible] = useState(false);
+    const [chineseGoalInput, setChineseGoalInput] = useState('');
+    const [chineseSlotPreview, setChineseSlotPreview] = useState([]);
+
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour >= 5 && hour < 12) return 'Bom dia';
@@ -149,6 +154,7 @@ const AddChallengesScreen = () => {
     const startChallenge = async (template, overrides = {}) => {
         setIsTemplateModalVisible(false);
         setIsEmergencyModalVisible(false);
+        setIsChineseModalVisible(false);
         if (!user) return;
         try {
             await addDoc(collection(db, "user_challenges"), {
@@ -161,6 +167,7 @@ const AddChallengesScreen = () => {
                 goalAmount: overrides.goalAmount !== undefined ? overrides.goalAmount : template.defaultGoal,
                 currentAmount: 0,
                 status: 'active',
+                ...(overrides.slots ? { slots: overrides.slots } : {}),
                 createdAt: serverTimestamp(),
             });
         } catch (error) {
@@ -178,8 +185,35 @@ const AddChallengesScreen = () => {
             setSuggestedExpense(null);
             setIsEmergencyModalVisible(true);
             fetchLastMonthExpenses();
+        } else if (item.id === 'desafio-chines') {
+            setChineseGoalInput('');
+            setChineseSlotPreview([]);
+            setIsChineseModalVisible(true);
         } else {
             setIsTemplateModalVisible(true);
+        }
+    };
+
+    const handlePickSlot = async (slotIndex) => {
+        if (!selectedChallengeDetail || isSubmitting) return;
+        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail.id);
+        const slots = liveData?.slots || [];
+        if (!slots[slotIndex] || slots[slotIndex].picked) return;
+
+        setIsSubmitting(true);
+        try {
+            const newSlots = slots.map((s, i) =>
+                i === slotIndex ? { ...s, picked: true } : s
+            );
+            const addedValue = slots[slotIndex].value;
+            await updateDoc(doc(db, 'user_challenges', selectedChallengeDetail.id), {
+                slots: newSlots,
+                currentAmount: increment(addedValue),
+            });
+        } catch (e) {
+            console.error('Erro ao marcar slot:', e);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -237,6 +271,39 @@ const AddChallengesScreen = () => {
         const multiplier = emergencyProfile === 'empreendedor' ? 12 : 6;
         return monthly * multiplier;
     })();
+
+    // Gera slots aleatórios que somam exatamente ao objetivo
+    const generateChineseSlots = (goal) => {
+        const TARGET_SLOTS = 40;
+        const avg = goal / TARGET_SLOTS;
+        // Unidade base arredondada para múltiplo de 5
+        const baseUnit = Math.max(5, Math.round(avg / 5) * 5);
+
+        const slots = [];
+        let remaining = Math.round(goal * 100) / 100;
+
+        while (remaining > 0) {
+            if (remaining <= baseUnit) {
+                slots.push(Math.round(remaining * 100) / 100);
+                break;
+            }
+            const min = baseUnit * 0.5;
+            const max = Math.min(baseUnit * 1.5, remaining);
+            const raw = min + Math.random() * (max - min);
+            const rounded = Math.max(5, Math.round(raw / 5) * 5);
+            const val = Math.min(rounded, remaining);
+            slots.push(Math.round(val * 100) / 100);
+            remaining = Math.round((remaining - val) * 100) / 100;
+        }
+
+        // Embaralhar
+        for (let i = slots.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [slots[i], slots[j]] = [slots[j], slots[i]];
+        }
+
+        return slots.map(value => ({ value, picked: false }));
+    };
 
     const handleUpdateChallengeValue = async () => {
         if (!selectedChallengeDetail || !amountToAdd || isSubmitting) return;
@@ -477,6 +544,108 @@ const AddChallengesScreen = () => {
                 </View>
             </Modal>
 
+            {/* Desafio Chinês Modal */}
+            <Modal
+                visible={isChineseModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIsChineseModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Desafio Chinês</Text>
+                            <TouchableOpacity onPress={() => setIsChineseModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#000" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.emergencyLabel}>Quanto você quer juntar?</Text>
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <TextInput
+                                style={styles.amountInput}
+                                placeholder="0,00"
+                                keyboardType="numeric"
+                                value={chineseGoalInput}
+                                onChangeText={(v) => {
+                                    setChineseGoalInput(v);
+                                    const parsed = parseFloat(v.replace(',', '.'));
+                                    if (!isNaN(parsed) && parsed > 0) {
+                                        setChineseSlotPreview(generateChineseSlots(parsed));
+                                    } else {
+                                        setChineseSlotPreview([]);
+                                    }
+                                }}
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        {chineseSlotPreview.length > 0 && (
+                            <>
+                                <View style={styles.chinesePreviewInfo}>
+                                    <MaterialCommunityIcons name="cards-outline" size={18} color="#0ea5e9" />
+                                    <Text style={styles.chinesePreviewText}>
+                                        {chineseSlotPreview.length} envelopes gerados — valores entre{' '}
+                                        <Text style={{ fontWeight: '700', color: '#0ea5e9' }}>
+                                            {formatCurrency(Math.min(...chineseSlotPreview.map(s => s.value)))}
+                                        </Text>{' '}e{' '}
+                                        <Text style={{ fontWeight: '700', color: '#0ea5e9' }}>
+                                            {formatCurrency(Math.max(...chineseSlotPreview.map(s => s.value)))}
+                                        </Text>
+                                    </Text>
+                                </View>
+
+                                {/* Preview de alguns envelopes */}
+                                <View style={styles.chineseSlotPreviewRow}>
+                                    {chineseSlotPreview.slice(0, 6).map((s, i) => (
+                                        <View key={i} style={styles.chineseSlotPreviewTile}>
+                                            <Text style={styles.chineseSlotPreviewValue}>
+                                                {formatCurrency(s.value)}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                    {chineseSlotPreview.length > 6 && (
+                                        <View style={[styles.chineseSlotPreviewTile, { backgroundColor: '#E0F2FE' }]}>
+                                            <Text style={[styles.chineseSlotPreviewValue, { color: '#0ea5e9' }]}>
+                                                +{chineseSlotPreview.length - 6}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                <TouchableOpacity
+                                    style={styles.chineseRegenerateBtn}
+                                    onPress={() => {
+                                        const parsed = parseFloat(chineseGoalInput.replace(',', '.'));
+                                        if (!isNaN(parsed) && parsed > 0)
+                                            setChineseSlotPreview(generateChineseSlots(parsed));
+                                    }}
+                                >
+                                    <MaterialCommunityIcons name="refresh" size={16} color="#0ea5e9" />
+                                    <Text style={styles.chineseRegenerateText}>Gerar novos valores</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+
+                        <TouchableOpacity
+                            style={[
+                                styles.modalStartButton,
+                                { backgroundColor: '#0ea5e9', marginTop: 20, opacity: chineseSlotPreview.length === 0 ? 0.4 : 1 }
+                            ]}
+                            disabled={chineseSlotPreview.length === 0}
+                            onPress={() => {
+                                const template = CHALLENGE_TEMPLATES.find(t => t.id === 'desafio-chines');
+                                const goal = parseFloat(chineseGoalInput.replace(',', '.'));
+                                startChallenge(template, { goalAmount: goal, slots: chineseSlotPreview });
+                            }}
+                        >
+                            <Text style={styles.modalStartButtonText}>Começar Desafio</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
             {/* Reserva de Emergência Modal */}
             <Modal
                 visible={isEmergencyModalVisible}
@@ -520,9 +689,6 @@ const AddChallengesScreen = () => {
                                 <Text style={[styles.emergencyProfileText, emergencyProfile === 'assalariado' && styles.emergencyProfileTextActive]}>
                                     Assalariado
                                 </Text>
-                                <Text style={[styles.emergencyProfileMultiplier, emergencyProfile === 'assalariado' && { color: '#FFF' }]}>
-                                    6×
-                                </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.emergencyProfileBtn, emergencyProfile === 'empreendedor' && styles.emergencyProfileBtnActive]}
@@ -535,9 +701,6 @@ const AddChallengesScreen = () => {
                                 />
                                 <Text style={[styles.emergencyProfileText, emergencyProfile === 'empreendedor' && styles.emergencyProfileTextActive]}>
                                     Empreendedor
-                                </Text>
-                                <Text style={[styles.emergencyProfileMultiplier, emergencyProfile === 'empreendedor' && { color: '#FFF' }]}>
-                                    12×
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -650,72 +813,133 @@ const AddChallengesScreen = () => {
                                 <Ionicons name="close" size={24} color="#000" />
                             </TouchableOpacity>
                         </View>
-                        {selectedChallengeDetail && (
-                            <View>
-                                <View style={styles.detailCard}>
-                                    <View style={[styles.detailIconBox, { backgroundColor: selectedChallengeDetail.color + '15' }]}>
-                                        <MaterialCommunityIcons name={selectedChallengeDetail.iconName} size={40} color={selectedChallengeDetail.color} />
-                                    </View>
-                                    <Text style={styles.detailTitle}>{selectedChallengeDetail.title}</Text>
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Meta:</Text>
-                                        <Text style={styles.detailValue}>{formatCurrency(selectedChallengeDetail.goalAmount)}</Text>
-                                    </View>
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Acumulado:</Text>
-                                        <Text style={styles.detailValue}>{formatCurrency(selectedChallengeDetail.currentAmount)}</Text>
-                                    </View>
-                                    
-                                    <View style={styles.addValueContainer}>
-                                        <View style={styles.operationToggle}>
-                                            <TouchableOpacity 
-                                                style={[styles.opButton, operationType === 'add' && styles.opButtonActive]}
-                                                onPress={() => setOperationType('add')}
-                                            >
-                                                <Ionicons name="add-circle" size={20} color={operationType === 'add' ? '#FFF' : '#94A3B8'} />
-                                                <Text style={[styles.opButtonText, operationType === 'add' && styles.opButtonTextActive]}>Adicionar</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity 
-                                                style={[styles.opButton, operationType === 'subtract' && styles.opButtonActiveSubtract]}
-                                                onPress={() => setOperationType('subtract')}
-                                            >
-                                                <Ionicons name="remove-circle" size={20} color={operationType === 'subtract' ? '#FFF' : '#94A3B8'} />
-                                                <Text style={[styles.opButtonText, operationType === 'subtract' && styles.opButtonTextActive]}>Retirar</Text>
-                                            </TouchableOpacity>
+                        {selectedChallengeDetail && (() => {
+                            const liveDetail = startedChallenges.find(c => c.id === selectedChallengeDetail.id) || selectedChallengeDetail;
+                            const isChinese = liveDetail.templateId === 'desafio-chines';
+                            const slots = liveDetail.slots || [];
+                            const pickedCount = slots.filter(s => s.picked).length;
+                            const remaining = slots.filter(s => !s.picked).length;
+
+                            if (isChinese) {
+                                return (
+                                    <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 500 }}>
+                                        {/* Cabeçalho */}
+                                        <View style={styles.detailCard}>
+                                            <View style={[styles.detailIconBox, { backgroundColor: '#E0F2FE' }]}>
+                                                <MaterialCommunityIcons name="cards-outline" size={40} color="#0ea5e9" />
+                                            </View>
+                                            <Text style={styles.detailTitle}>{liveDetail.title}</Text>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Meta:</Text>
+                                                <Text style={styles.detailValue}>{formatCurrency(liveDetail.goalAmount)}</Text>
+                                            </View>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Acumulado:</Text>
+                                                <Text style={[styles.detailValue, { color: '#0ea5e9' }]}>{formatCurrency(liveDetail.currentAmount || 0)}</Text>
+                                            </View>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Envelopes restantes:</Text>
+                                                <Text style={styles.detailValue}>{remaining} / {slots.length}</Text>
+                                            </View>
                                         </View>
 
-                                        <View style={styles.inputWrapper}>
-                                            <Text style={styles.currencyPrefix}>R$</Text>
-                                            <TextInput
-                                                style={styles.amountInput}
-                                                placeholder="0,00"
-                                                keyboardType="numeric"
-                                                value={amountToAdd}
-                                                onChangeText={setAmountToAdd}
-                                                disabled={isSubmitting}
-                                            />
+                                        {/* Grade de envelopes */}
+                                        <Text style={[styles.emergencyLabel, { marginHorizontal: 4, marginBottom: 12 }]}>
+                                            Toque para marcar um envelope como pago
+                                        </Text>
+                                        <View style={styles.chineseSlotsGrid}>
+                                            {slots.map((slot, index) => (
+                                                <TouchableOpacity
+                                                    key={index}
+                                                    style={[
+                                                        styles.chineseSlotTile,
+                                                        slot.picked && styles.chineseSlotTilePicked,
+                                                    ]}
+                                                    onPress={() => handlePickSlot(index)}
+                                                    disabled={slot.picked || isSubmitting}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    {slot.picked ? (
+                                                        <Ionicons name="checkmark" size={18} color="#94A3B8" />
+                                                    ) : (
+                                                        <Text style={styles.chineseSlotValue}>
+                                                            {formatCurrency(slot.value)}
+                                                        </Text>
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
                                         </View>
-                                        <TouchableOpacity 
-                                            style={[
-                                                styles.confirmAddButton, 
-                                                { backgroundColor: operationType === 'add' ? (selectedChallengeDetail.color || '#3b82f6') : '#EF4444' }
-                                            ]}
-                                            onPress={handleUpdateChallengeValue}
-                                            disabled={isSubmitting}
-                                        >
-                                            {isSubmitting ? (
-                                                <ActivityIndicator color="#FFF" />
-                                            ) : (
-                                                <Text style={styles.confirmAddButtonText}>
-                                                    {operationType === 'add' ? 'Confirmar Aporte' : 'Confirmar Retirada'}
-                                                </Text>
-                                            )}
-                                        </TouchableOpacity>
+                                    </ScrollView>
+                                );
+                            }
+
+                            // UI genérica para outros desafios
+                            return (
+                                <View>
+                                    <View style={styles.detailCard}>
+                                        <View style={[styles.detailIconBox, { backgroundColor: liveDetail.color + '15' }]}>
+                                            <MaterialCommunityIcons name={liveDetail.iconName} size={40} color={liveDetail.color} />
+                                        </View>
+                                        <Text style={styles.detailTitle}>{liveDetail.title}</Text>
+                                        <View style={styles.detailRow}>
+                                            <Text style={styles.detailLabel}>Meta:</Text>
+                                            <Text style={styles.detailValue}>{formatCurrency(liveDetail.goalAmount)}</Text>
+                                        </View>
+                                        <View style={styles.detailRow}>
+                                            <Text style={styles.detailLabel}>Acumulado:</Text>
+                                            <Text style={styles.detailValue}>{formatCurrency(liveDetail.currentAmount)}</Text>
+                                        </View>
+
+                                        <View style={styles.addValueContainer}>
+                                            <View style={styles.operationToggle}>
+                                                <TouchableOpacity
+                                                    style={[styles.opButton, operationType === 'add' && styles.opButtonActive]}
+                                                    onPress={() => setOperationType('add')}
+                                                >
+                                                    <Ionicons name="add-circle" size={20} color={operationType === 'add' ? '#FFF' : '#94A3B8'} />
+                                                    <Text style={[styles.opButtonText, operationType === 'add' && styles.opButtonTextActive]}>Adicionar</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.opButton, operationType === 'subtract' && styles.opButtonActiveSubtract]}
+                                                    onPress={() => setOperationType('subtract')}
+                                                >
+                                                    <Ionicons name="remove-circle" size={20} color={operationType === 'subtract' ? '#FFF' : '#94A3B8'} />
+                                                    <Text style={[styles.opButtonText, operationType === 'subtract' && styles.opButtonTextActive]}>Retirar</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            <View style={styles.inputWrapper}>
+                                                <Text style={styles.currencyPrefix}>R$</Text>
+                                                <TextInput
+                                                    style={styles.amountInput}
+                                                    placeholder="0,00"
+                                                    keyboardType="numeric"
+                                                    value={amountToAdd}
+                                                    onChangeText={setAmountToAdd}
+                                                    disabled={isSubmitting}
+                                                />
+                                            </View>
+                                            <TouchableOpacity
+                                                style={[
+                                                    styles.confirmAddButton,
+                                                    { backgroundColor: operationType === 'add' ? (liveDetail.color || '#3b82f6') : '#EF4444' }
+                                                ]}
+                                                onPress={handleUpdateChallengeValue}
+                                                disabled={isSubmitting}
+                                            >
+                                                {isSubmitting ? (
+                                                    <ActivityIndicator color="#FFF" />
+                                                ) : (
+                                                    <Text style={styles.confirmAddButtonText}>
+                                                        {operationType === 'add' ? 'Confirmar Aporte' : 'Confirmar Retirada'}
+                                                    </Text>
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 </View>
-                            </View>
-                        )}
-                        <TouchableOpacity 
+                            );
+                        })()}
+                        <TouchableOpacity
                             style={styles.modalCloseButton}
                             onPress={() => setIsDetailModalVisible(false)}
                         >
@@ -1321,6 +1545,82 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
         color: '#F87171',
+    },
+    // Desafio Chinês
+    chinesePreviewInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#E0F2FE',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginTop: 14,
+        marginBottom: 10,
+    },
+    chinesePreviewText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#0369A1',
+        lineHeight: 18,
+    },
+    chineseSlotPreviewRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 10,
+    },
+    chineseSlotPreviewTile: {
+        backgroundColor: '#F0F9FF',
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+    },
+    chineseSlotPreviewValue: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#0369A1',
+    },
+    chineseRegenerateBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        marginTop: 2,
+        marginBottom: 4,
+    },
+    chineseRegenerateText: {
+        fontSize: 13,
+        color: '#0ea5e9',
+        fontWeight: '600',
+    },
+    chineseSlotsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        paddingBottom: 20,
+    },
+    chineseSlotTile: {
+        width: '30%',
+        aspectRatio: 1.8,
+        backgroundColor: '#F0F9FF',
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#BAE6FD',
+    },
+    chineseSlotTilePicked: {
+        backgroundColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
+    },
+    chineseSlotValue: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#0369A1',
     },
 });
 
