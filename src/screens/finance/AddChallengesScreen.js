@@ -130,6 +130,11 @@ const AddChallengesScreen = () => {
     const [chineseGoalInput, setChineseGoalInput] = useState('');
     const [chineseSlotPreview, setChineseSlotPreview] = useState([]);
 
+    // 52 Semanas
+    const [is52WeeksModalVisible, setIs52WeeksModalVisible] = useState(false);
+    const [weeksName, setWeeksName] = useState('52 Semanas');
+    const [weeksStartValue, setWeeksStartValue] = useState('1');
+
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour >= 5 && hour < 12) return 'Bom dia';
@@ -155,6 +160,7 @@ const AddChallengesScreen = () => {
         setIsTemplateModalVisible(false);
         setIsEmergencyModalVisible(false);
         setIsChineseModalVisible(false);
+        setIs52WeeksModalVisible(false);
         if (!user) return;
         try {
             await addDoc(collection(db, "user_challenges"), {
@@ -189,6 +195,10 @@ const AddChallengesScreen = () => {
             setChineseGoalInput('');
             setChineseSlotPreview([]);
             setIsChineseModalVisible(true);
+        } else if (item.id === '52-semanas') {
+            setWeeksName('52 Semanas');
+            setWeeksStartValue('1');
+            setIs52WeeksModalVisible(true);
         } else {
             setIsTemplateModalVisible(true);
         }
@@ -270,6 +280,23 @@ const AddChallengesScreen = () => {
         const monthly = parseFloat(emergencyMonthlyExpense.replace(',', '.')) || 0;
         const multiplier = emergencyProfile === 'empreendedor' ? 12 : 6;
         return monthly * multiplier;
+    })();
+
+    // Gera 52 semanas: semana N vale startValue + (N-1)
+    const generate52WeeksSlots = (startVal) => {
+        const start = Math.max(1, Math.round(parseFloat(String(startVal).replace(',', '.')) || 1));
+        return Array.from({ length: 52 }, (_, i) => ({
+            week: i + 1,
+            value: start + i,
+            picked: false,
+        }));
+    };
+
+    const weeks52Goal = (() => {
+        const start = parseFloat(String(weeksStartValue).replace(',', '.')) || 1;
+        const s = Math.max(1, Math.round(start));
+        // soma = 52*s + (0+1+...+51) = 52*s + 1326
+        return 52 * s + 1326;
     })();
 
     // Gera slots aleatórios que somam exatamente ao objetivo
@@ -540,6 +567,77 @@ const AddChallengesScreen = () => {
                                 </TouchableOpacity>
                             ))}
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* 52 Semanas Modal */}
+            <Modal
+                visible={is52WeeksModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIs52WeeksModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>52 Semanas</Text>
+                            <TouchableOpacity onPress={() => setIs52WeeksModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#000" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.emergencyLabel}>Nome do desafio</Text>
+                        <View style={styles.emergencyNameInput}>
+                            <TextInput
+                                style={styles.emergencyNameField}
+                                value={weeksName}
+                                onChangeText={setWeeksName}
+                                placeholder="Ex: 52 Semanas"
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Valor inicial (semana 1)</Text>
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <TextInput
+                                style={styles.amountInput}
+                                placeholder="1,00"
+                                keyboardType="numeric"
+                                value={weeksStartValue}
+                                onChangeText={setWeeksStartValue}
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+                        <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 6, marginBottom: 14 }}>
+                            Cada semana aumenta R$ 1,00. Semana 52 = R$ {(Math.max(1, Math.round(parseFloat(String(weeksStartValue).replace(',', '.')) || 1)) + 51).toFixed(0)}
+                        </Text>
+
+                        <View style={[styles.modalGoalBox, { backgroundColor: '#F5F3FF', borderRadius: 16 }]}>
+                            <View>
+                                <Text style={styles.modalGoalLabel}>Total ao final</Text>
+                                <Text style={{ fontSize: 11, color: '#94A3B8' }}>52 semanas somadas</Text>
+                            </View>
+                            <Text style={[styles.modalGoalValue, { color: '#8b5cf6', fontSize: 20 }]}>
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(weeks52Goal)}
+                            </Text>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.modalStartButton, { backgroundColor: '#8b5cf6', marginTop: 20 }]}
+                            onPress={() => {
+                                const template = CHALLENGE_TEMPLATES.find(t => t.id === '52-semanas');
+                                const slots = generate52WeeksSlots(weeksStartValue);
+                                startChallenge(template, {
+                                    title: weeksName.trim() || '52 Semanas',
+                                    goalAmount: weeks52Goal,
+                                    slots,
+                                });
+                            }}
+                        >
+                            <Text style={styles.modalStartButtonText}>Começar Desafio</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
@@ -816,6 +914,7 @@ const AddChallengesScreen = () => {
                         {selectedChallengeDetail && (() => {
                             const liveDetail = startedChallenges.find(c => c.id === selectedChallengeDetail.id) || selectedChallengeDetail;
                             const isChinese = liveDetail.templateId === 'desafio-chines';
+                            const is52Weeks = liveDetail.templateId === '52-semanas';
                             const slots = liveDetail.slots || [];
                             const pickedCount = slots.filter(s => s.picked).length;
                             const remaining = slots.filter(s => !s.picked).length;
@@ -865,6 +964,58 @@ const AddChallengesScreen = () => {
                                                         <Text style={styles.chineseSlotValue}>
                                                             {formatCurrency(slot.value)}
                                                         </Text>
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </ScrollView>
+                                );
+                            }
+
+                            if (is52Weeks) {
+                                return (
+                                    <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 500 }}>
+                                        <View style={styles.detailCard}>
+                                            <View style={[styles.detailIconBox, { backgroundColor: '#F5F3FF' }]}>
+                                                <Ionicons name="calendar-outline" size={40} color="#8b5cf6" />
+                                            </View>
+                                            <Text style={styles.detailTitle}>{liveDetail.title}</Text>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Meta total:</Text>
+                                                <Text style={styles.detailValue}>{formatCurrency(liveDetail.goalAmount)}</Text>
+                                            </View>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Acumulado:</Text>
+                                                <Text style={[styles.detailValue, { color: '#8b5cf6' }]}>{formatCurrency(liveDetail.currentAmount || 0)}</Text>
+                                            </View>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Semanas concluídas:</Text>
+                                                <Text style={styles.detailValue}>{pickedCount} / {slots.length}</Text>
+                                            </View>
+                                        </View>
+
+                                        <Text style={[styles.emergencyLabel, { marginHorizontal: 4, marginBottom: 12 }]}>
+                                            Toque para marcar a semana como paga
+                                        </Text>
+                                        <View style={styles.weeksGrid}>
+                                            {slots.map((slot, index) => (
+                                                <TouchableOpacity
+                                                    key={index}
+                                                    style={[
+                                                        styles.weekTile,
+                                                        slot.picked && styles.weekTilePicked,
+                                                    ]}
+                                                    onPress={() => handlePickSlot(index)}
+                                                    disabled={slot.picked || isSubmitting}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    {slot.picked ? (
+                                                        <Ionicons name="checkmark" size={14} color="#C4B5FD" />
+                                                    ) : (
+                                                        <>
+                                                            <Text style={styles.weekTileNumber}>S{slot.week}</Text>
+                                                            <Text style={styles.weekTileValue}>{formatCurrency(slot.value)}</Text>
+                                                        </>
                                                     )}
                                                 </TouchableOpacity>
                                             ))}
@@ -1621,6 +1772,37 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '700',
         color: '#0369A1',
+    },
+    weeksGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 7,
+        paddingBottom: 20,
+    },
+    weekTile: {
+        width: '22%',
+        aspectRatio: 1.4,
+        backgroundColor: '#F5F3FF',
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#DDD6FE',
+    },
+    weekTilePicked: {
+        backgroundColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
+    },
+    weekTileNumber: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#7C3AED',
+        marginBottom: 2,
+    },
+    weekTileValue: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#5B21B6',
     },
 });
 
