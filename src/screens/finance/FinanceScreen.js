@@ -12,15 +12,11 @@ import {
   Easing, 
   ActivityIndicator,
   LayoutAnimation,
-  UIManager,
   Modal,
   Alert,
   TextInput
 } from 'react-native';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
@@ -223,6 +219,8 @@ const FinanceScreen = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
+  const maskCurrency = (value) => showBalance ? formatCurrency(value) : 'R$ ••••';
+
   const renderTransaction = ({ item }) => (
     <View style={styles.transactionItem}>
       <View style={[styles.transactionIconContainer, { borderColor: item.categoryColor || '#EEE' }]}>
@@ -240,7 +238,7 @@ const FinanceScreen = () => {
       </View>
       <View style={styles.transactionAmountContainer}>
         <Text style={[styles.transactionAmount, { color: item.type === 'expense' ? '#FF5252' : '#4CAF50' }]}>
-          {item.type === 'expense' ? '-' : '+'}{formatCurrency(item.amount)}
+          {showBalance ? (item.type === 'expense' ? '-' : '+') : ''}{showBalance ? formatCurrency(item.amount) : 'R$ ••••'}
         </Text>
       </View>
     </View>
@@ -346,6 +344,13 @@ const FinanceScreen = () => {
             <>
               {userChallenges.map(item => {
                 const isCollapsed = collapsedChallenges[item.id];
+                const isChinese = item.templateId === 'desafio-chines';
+                const is52Weeks = item.templateId === '52-semanas';
+                const isSlotBased = isChinese || is52Weeks;
+                const slots = item.slots || [];
+                const pickedSlots = slots.filter(s => s.picked).length;
+                const totalSlots = slots.length;
+
                 return (
                   <TouchableOpacity 
                     key={item.id} 
@@ -353,8 +358,12 @@ const FinanceScreen = () => {
                     activeOpacity={0.7} 
                     onPress={() => toggleChallenge(item.id)}
                     onLongPress={() => {
-                      setSelectedChallenge(item);
-                      setIsChallengeModalVisible(true);
+                      if (isSlotBased) {
+                        navigation.navigate('AddChallenges');
+                      } else {
+                        setSelectedChallenge(item);
+                        setIsChallengeModalVisible(true);
+                      }
                     }}
                   >
                   <View style={[styles.iniciadoIconBox, { backgroundColor: (item.color || '#EEE') + '15' }]}>
@@ -380,29 +389,55 @@ const FinanceScreen = () => {
                     </View>
                     
                     {!isCollapsed && (
-                      <>
-                        {/* Progress Bar */}
-                        <View style={styles.progressBarBg}>
-                          <View 
-                            style={[
-                              styles.progressBarFill, 
-                              { 
-                                width: `${Math.min(((item.currentAmount || 0) / (item.goalAmount || 1)) * 100, 100)}%`,
-                                backgroundColor: item.color || theme.colors.primary
-                              }
-                            ]} 
-                          />
-                        </View>
-                        
-                        <View style={styles.iniciadoFooterRow}>
-                          <Text style={styles.percentText}>
-                            {Math.round(((item.currentAmount || 0) / (item.goalAmount || 1)) * 100)}% completo
-                          </Text>
-                          <Text style={[styles.amountText, { color: item.color || '#22C55E' }]}>
-                            {formatCurrency(item.currentAmount || 0)}
-                          </Text>
-                        </View>
-                      </>
+                      isSlotBased ? (
+                        <>
+                          {/* Slot progress bar */}
+                          <View style={styles.progressBarBg}>
+                            <View 
+                              style={[
+                                styles.progressBarFill, 
+                                { 
+                                  width: `${Math.min((pickedSlots / Math.max(totalSlots, 1)) * 100, 100)}%`,
+                                  backgroundColor: item.color || theme.colors.primary
+                                }
+                              ]} 
+                            />
+                          </View>
+                          <View style={styles.iniciadoFooterRow}>
+                            <Text style={styles.percentText}>
+                              {isChinese
+                                ? `${pickedSlots}/${totalSlots} envelopes`
+                                : `Semana ${pickedSlots} de ${totalSlots}`}
+                            </Text>
+                            <Text style={[styles.amountText, { color: item.color || '#22C55E' }]}>
+                              {maskCurrency(item.currentAmount || 0)}
+                            </Text>
+                          </View>
+                        </>
+                      ) : (
+                        <>
+                          {/* Amount progress bar */}
+                          <View style={styles.progressBarBg}>
+                            <View 
+                              style={[
+                                styles.progressBarFill, 
+                                { 
+                                  width: `${Math.min(((item.currentAmount || 0) / (item.goalAmount || 1)) * 100, 100)}%`,
+                                  backgroundColor: item.color || theme.colors.primary
+                                }
+                              ]} 
+                            />
+                          </View>
+                          <View style={styles.iniciadoFooterRow}>
+                            <Text style={styles.percentText}>
+                              {Math.round(((item.currentAmount || 0) / (item.goalAmount || 1)) * 100)}% completo
+                            </Text>
+                            <Text style={[styles.amountText, { color: item.color || '#22C55E' }]}>
+                              {maskCurrency(item.currentAmount || 0)}
+                            </Text>
+                          </View>
+                        </>
+                      )
                     )}
                   </View>
                 </TouchableOpacity>

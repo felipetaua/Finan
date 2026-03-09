@@ -11,14 +11,15 @@ import {
     Modal, 
     Platform,
     ActivityIndicator,
-    TextInput
+    TextInput,
+    Alert
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { auth, db } from '../../services/firebaseConfig';
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, doc, updateDoc, increment, getDocs, deleteDoc } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
@@ -116,6 +117,39 @@ const AddChallengesScreen = () => {
     const [operationType, setOperationType] = useState('add'); // 'add' or 'subtract'
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Reserva de Emergência
+    const [isEmergencyModalVisible, setIsEmergencyModalVisible] = useState(false);
+    const [emergencyName, setEmergencyName] = useState('Reserva de Emergência');
+    const [emergencyProfile, setEmergencyProfile] = useState('assalariado'); // 'assalariado' | 'empreendedor'
+    const [emergencyMonthlyExpense, setEmergencyMonthlyExpense] = useState('');
+    const [suggestedExpense, setSuggestedExpense] = useState(null);
+    const [suggestionMonths, setSuggestionMonths] = useState(0);
+    const [isFetchingSuggestion, setIsFetchingSuggestion] = useState(false);
+
+    // Desafio Chinês
+    const [isChineseModalVisible, setIsChineseModalVisible] = useState(false);
+    const [chineseGoalInput, setChineseGoalInput] = useState('');
+    const [chineseSlotPreview, setChineseSlotPreview] = useState([]);
+
+    // 52 Semanas
+    const [is52WeeksModalVisible, setIs52WeeksModalVisible] = useState(false);
+    const [weeksName, setWeeksName] = useState('52 Semanas');
+    const [weeksStartValue, setWeeksStartValue] = useState('1');
+
+    // Guardando Dinheiro
+    const [isSavingsModalVisible, setIsSavingsModalVisible] = useState(false);
+    const [savingsName, setSavingsName] = useState('Guardando Dinheiro');
+    const [savingsGoalInput, setSavingsGoalInput] = useState('');
+
+    // Edit Challenge
+    const [isEditChallengeModalVisible, setIsEditChallengeModalVisible] = useState(false);
+    const [editName, setEditName] = useState('');
+    const [editGoal, setEditGoal] = useState('');
+
+    // Delete Confirm
+    const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
+    const [challengeToDelete, setChallengeToDelete] = useState(null);
+
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour >= 5 && hour < 12) return 'Bom dia';
@@ -137,25 +171,202 @@ const AddChallengesScreen = () => {
         return () => unsubscribe();
     }, [user]);
 
-    const startChallenge = async (template) => {
+    const startChallenge = async (template, overrides = {}) => {
         setIsTemplateModalVisible(false);
+        setIsEmergencyModalVisible(false);
+        setIsChineseModalVisible(false);
+        setIs52WeeksModalVisible(false);
+        setIsSavingsModalVisible(false);
         if (!user) return;
         try {
             await addDoc(collection(db, "user_challenges"), {
                 userId: user.uid,
                 templateId: template.id,
-                title: template.title,
+                title: overrides.title !== undefined ? overrides.title : template.title,
                 iconName: template.icon,
                 iconType: template.iconType,
                 color: template.color,
-                goalAmount: template.defaultGoal,
+                goalAmount: overrides.goalAmount !== undefined ? overrides.goalAmount : template.defaultGoal,
                 currentAmount: 0,
                 status: 'active',
+                ...(overrides.slots ? { slots: overrides.slots } : {}),
                 createdAt: serverTimestamp(),
             });
         } catch (error) {
             console.error("Error starting challenge:", error);
         }
+    };
+
+    const handleTemplatePress = (item) => {
+        setIsTypeSelectionModalVisible(false);
+        setSelectedTemplate(item);
+        if (item.id === 'reserva-emergencia') {
+            setEmergencyName('Reserva de Emergência');
+            setEmergencyProfile('assalariado');
+            setEmergencyMonthlyExpense('');
+            setSuggestedExpense(null);
+            setIsEmergencyModalVisible(true);
+            fetchLastMonthExpenses();
+        } else if (item.id === 'desafio-chines') {
+            setChineseGoalInput('');
+            setChineseSlotPreview([]);
+            setIsChineseModalVisible(true);
+        } else if (item.id === '52-semanas') {
+            setWeeksName('52 Semanas');
+            setWeeksStartValue('1');
+            setIs52WeeksModalVisible(true);
+        } else if (item.id === 'guardando-dinheiro') {
+            setSavingsName('Guardando Dinheiro');
+            setSavingsGoalInput('');
+            setIsSavingsModalVisible(true);
+        } else {
+            setIsTemplateModalVisible(true);
+        }
+    };
+
+    const handlePickSlot = async (slotIndex) => {
+        if (!selectedChallengeDetail || isSubmitting) return;
+        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail.id);
+        const slots = liveData?.slots || [];
+        if (!slots[slotIndex] || slots[slotIndex].picked) return;
+
+        setIsSubmitting(true);
+        try {
+            const newSlots = slots.map((s, i) =>
+                i === slotIndex ? { ...s, picked: true } : s
+            );
+            const addedValue = slots[slotIndex].value;
+            const challengeTitle = liveData?.title || selectedChallengeDetail.title || 'Desafio';
+            const challengeColor = liveData?.color || selectedChallengeDetail.color || '#3b82f6';
+            await Promise.all([
+                updateDoc(doc(db, 'user_challenges', selectedChallengeDetail.id), {
+                    slots: newSlots,
+                    currentAmount: increment(addedValue),
+                }),
+                addDoc(collection(db, 'transactions'), {
+                    userId: user.uid,
+                    type: 'expense',
+                    amount: addedValue,
+                    description: challengeTitle,
+                    category: 'Desafio',
+                    categoryIcon: 'piggy-bank',
+                    categoryColor: challengeColor,
+                    isFixed: false,
+                    details: '',
+                    date: serverTimestamp(),
+                    createdAt: serverTimestamp(),
+                }),
+            ]);
+        } catch (e) {
+            console.error('Erro ao marcar slot:', e);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const fetchLastMonthExpenses = async () => {
+        if (!user) return;
+        setIsFetchingSuggestion(true);
+        try {
+            const now = new Date();
+            // Janelas dos últimos 3 meses
+            const MONTHS = 3;
+            const windows = Array.from({ length: MONTHS }, (_, i) => {
+                const start = new Date(now.getFullYear(), now.getMonth() - (i + 1), 1);
+                const end = new Date(now.getFullYear(), now.getMonth() - i, 0, 23, 59, 59);
+                return { start, end };
+            });
+
+            const q = query(
+                collection(db, 'transactions'),
+                where('userId', '==', user.uid),
+                where('type', '==', 'expense')
+            );
+            const snapshot = await getDocs(q);
+
+            // Soma por mês
+            const totals = windows.map(({ start, end }) => {
+                let t = 0;
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (!data.date) return;
+                    const d = new Date(data.date.seconds * 1000);
+                    if (d >= start && d <= end) t += data.amount || 0;
+                });
+                return t;
+            });
+
+            // Considera apenas mêses que têm pelo menos algum gasto
+            const activeTotals = totals.filter(t => t > 0);
+            if (activeTotals.length === 0) {
+                setSuggestedExpense(null);
+                setSuggestionMonths(0);
+            } else {
+                const avg = activeTotals.reduce((a, b) => a + b, 0) / activeTotals.length;
+                setSuggestedExpense(avg);
+                setSuggestionMonths(activeTotals.length);
+            }
+        } catch (e) {
+            console.error('Erro ao buscar gastos:', e);
+        } finally {
+            setIsFetchingSuggestion(false);
+        }
+    };
+
+    const emergencyGoal = (() => {
+        const monthly = parseFloat(emergencyMonthlyExpense.replace(',', '.')) || 0;
+        const multiplier = emergencyProfile === 'empreendedor' ? 12 : 6;
+        return monthly * multiplier;
+    })();
+
+    // Gera 52 semanas: semana N vale startValue + (N-1)
+    const generate52WeeksSlots = (startVal) => {
+        const start = Math.max(1, Math.round(parseFloat(String(startVal).replace(',', '.')) || 1));
+        return Array.from({ length: 52 }, (_, i) => ({
+            week: i + 1,
+            value: start + i,
+            picked: false,
+        }));
+    };
+
+    const weeks52Goal = (() => {
+        const start = parseFloat(String(weeksStartValue).replace(',', '.')) || 1;
+        const s = Math.max(1, Math.round(start));
+        // soma = 52*s + (0+1+...+51) = 52*s + 1326
+        return 52 * s + 1326;
+    })();
+
+    // Gera slots aleatórios que somam exatamente ao objetivo
+    const generateChineseSlots = (goal) => {
+        const TARGET_SLOTS = 40;
+        const avg = goal / TARGET_SLOTS;
+        // Unidade base arredondada para múltiplo de 5
+        const baseUnit = Math.max(5, Math.round(avg / 5) * 5);
+
+        const slots = [];
+        let remaining = Math.round(goal * 100) / 100;
+
+        while (remaining > 0) {
+            if (remaining <= baseUnit) {
+                slots.push(Math.round(remaining * 100) / 100);
+                break;
+            }
+            const min = baseUnit * 0.5;
+            const max = Math.min(baseUnit * 1.5, remaining);
+            const raw = min + Math.random() * (max - min);
+            const rounded = Math.max(5, Math.round(raw / 5) * 5);
+            const val = Math.min(rounded, remaining);
+            slots.push(Math.round(val * 100) / 100);
+            remaining = Math.round((remaining - val) * 100) / 100;
+        }
+
+        // Embaralhar
+        for (let i = slots.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [slots[i], slots[j]] = [slots[j], slots[i]];
+        }
+
+        return slots.map(value => ({ value, picked: false }));
     };
 
     const handleUpdateChallengeValue = async () => {
@@ -164,20 +375,85 @@ const AddChallengesScreen = () => {
         const value = parseFloat(amountToAdd.replace(',', '.'));
         if (isNaN(value) || value <= 0) return;
 
+        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail.id);
+        const challengeTitle = liveData?.title || selectedChallengeDetail.title || 'Desafio';
+        const challengeColor = liveData?.color || selectedChallengeDetail.color || '#3b82f6';
+        const isDeposit = operationType === 'add';
+        const finalValue = isDeposit ? value : -value;
+
         setIsSubmitting(true);
         try {
-            const challengeRef = doc(db, "user_challenges", selectedChallengeDetail.id);
-            const finalValue = operationType === 'add' ? value : -value;
-            
-            await updateDoc(challengeRef, {
-                currentAmount: increment(finalValue)
-            });
-            
+            const challengeRef = doc(db, 'user_challenges', selectedChallengeDetail.id);
+            await Promise.all([
+                updateDoc(challengeRef, {
+                    currentAmount: increment(finalValue)
+                }),
+                addDoc(collection(db, 'transactions'), {
+                    userId: user.uid,
+                    type: isDeposit ? 'expense' : 'income',
+                    amount: value,
+                    description: challengeTitle,
+                    category: 'Desafio',
+                    categoryIcon: 'piggy-bank',
+                    categoryColor: challengeColor,
+                    isFixed: false,
+                    details: '',
+                    date: serverTimestamp(),
+                    createdAt: serverTimestamp(),
+                }),
+            ]);
+
             setAmountToAdd('');
             setIsDetailModalVisible(false);
             setSelectedChallengeDetail(null);
         } catch (error) {
-            console.error("Error updating challenge value:", error);
+            console.error('Error updating challenge value:', error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteChallenge = (challenge) => {
+        setChallengeToDelete(challenge);
+        setIsDeleteConfirmVisible(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!challengeToDelete) return;
+        try {
+            await deleteDoc(doc(db, 'user_challenges', challengeToDelete.id));
+            setIsDeleteConfirmVisible(false);
+            setChallengeToDelete(null);
+            setIsDetailModalVisible(false);
+            setSelectedChallengeDetail(null);
+        } catch (e) {
+            console.error('Erro ao excluir desafio:', e);
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!selectedChallengeDetail || isSubmitting) return;
+        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail.id);
+        const isChinese = liveData?.templateId === 'desafio-chines';
+        const is52Weeks = liveData?.templateId === '52-semanas';
+        const isSlotBased = isChinese || is52Weeks;
+
+        const updates = {};
+        if (editName.trim()) updates.title = editName.trim();
+        if (!isSlotBased) {
+            const goal = parseFloat(editGoal.replace(',', '.'));
+            if (!isNaN(goal) && goal > 0) updates.goalAmount = goal;
+        }
+        if (Object.keys(updates).length === 0) {
+            setIsEditChallengeModalVisible(false);
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await updateDoc(doc(db, 'user_challenges', selectedChallengeDetail.id), updates);
+            setIsEditChallengeModalVisible(false);
+        } catch (e) {
+            console.error('Erro ao editar desafio:', e);
         } finally {
             setIsSubmitting(false);
         }
@@ -203,10 +479,7 @@ const AddChallengesScreen = () => {
         <TouchableOpacity 
             style={styles.categoryCard} 
             activeOpacity={0.7}
-            onPress={() => {
-                setSelectedTemplate(item);
-                setIsTemplateModalVisible(true);
-            }}
+            onPress={() => handleTemplatePress(item)}
         >
             <View style={[styles.categoryIconBox, { backgroundColor: item.color + '15' }]}>
                 {item.iconType === 'Ionicons' ? (
@@ -327,7 +600,7 @@ const AddChallengesScreen = () => {
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Desafios Iniciados</Text>
                     <TouchableOpacity>
-                        <Text style={styles.sectionDetails}>Minimizar</Text>
+                        <Text style={styles.sectionDetails}>Detalhes</Text>
                     </TouchableOpacity>
                 </View>
                 
@@ -379,11 +652,7 @@ const AddChallengesScreen = () => {
                                 <TouchableOpacity 
                                     key={item.id}
                                     style={styles.selectionItem}
-                                    onPress={() => {
-                                        setIsTypeSelectionModalVisible(false);
-                                        setSelectedTemplate(item);
-                                        setIsTemplateModalVisible(true);
-                                    }}
+                                    onPress={() => handleTemplatePress(item)}
                                 >
                                     <View style={[styles.selectionIconBox, { backgroundColor: item.color + '15' }]}>
                                         {item.iconType === 'Ionicons' ? (
@@ -400,6 +669,362 @@ const AddChallengesScreen = () => {
                                 </TouchableOpacity>
                             ))}
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Guardando Dinheiro Modal */}
+            <Modal
+                visible={isSavingsModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIsSavingsModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Guardando Dinheiro</Text>
+                            <TouchableOpacity onPress={() => setIsSavingsModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#000" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.emergencyLabel}>Nome da caixinha</Text>
+                        <View style={styles.emergencyNameInput}>
+                            <TextInput
+                                style={styles.emergencyNameField}
+                                value={savingsName}
+                                onChangeText={setSavingsName}
+                                placeholder="Ex: Viagem, Notebook..."
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Meta de valor</Text>
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <TextInput
+                                style={styles.amountInput}
+                                placeholder="0,00"
+                                keyboardType="numeric"
+                                value={savingsGoalInput}
+                                onChangeText={setSavingsGoalInput}
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={[
+                                styles.modalStartButton,
+                                { backgroundColor: '#3b82f6', marginTop: 24, opacity: !savingsGoalInput || parseFloat(savingsGoalInput.replace(',', '.')) <= 0 ? 0.4 : 1 }
+                            ]}
+                            disabled={!savingsGoalInput || parseFloat(savingsGoalInput.replace(',', '.')) <= 0}
+                            onPress={() => {
+                                const template = CHALLENGE_TEMPLATES.find(t => t.id === 'guardando-dinheiro');
+                                const goal = parseFloat(savingsGoalInput.replace(',', '.'));
+                                startChallenge(template, {
+                                    title: savingsName.trim() || 'Guardando Dinheiro',
+                                    goalAmount: goal,
+                                });
+                            }}
+                        >
+                            <Text style={styles.modalStartButtonText}>Criar Caixinha</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* 52 Semanas Modal */}
+            <Modal
+                visible={is52WeeksModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIs52WeeksModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>52 Semanas</Text>
+                            <TouchableOpacity onPress={() => setIs52WeeksModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#000" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.emergencyLabel}>Nome do desafio</Text>
+                        <View style={styles.emergencyNameInput}>
+                            <TextInput
+                                style={styles.emergencyNameField}
+                                value={weeksName}
+                                onChangeText={setWeeksName}
+                                placeholder="Ex: 52 Semanas"
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Valor inicial (semana 1)</Text>
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <TextInput
+                                style={styles.amountInput}
+                                placeholder="1,00"
+                                keyboardType="numeric"
+                                value={weeksStartValue}
+                                onChangeText={setWeeksStartValue}
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+                        <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 6, marginBottom: 14 }}>
+                            Cada semana aumenta R$ 1,00. Semana 52 = R$ {(Math.max(1, Math.round(parseFloat(String(weeksStartValue).replace(',', '.')) || 1)) + 51).toFixed(0)}
+                        </Text>
+
+                        <View style={[styles.modalGoalBox, { backgroundColor: '#F5F3FF', borderRadius: 16 }]}>
+                            <View>
+                                <Text style={styles.modalGoalLabel}>Total ao final</Text>
+                                <Text style={{ fontSize: 11, color: '#94A3B8' }}>52 semanas somadas</Text>
+                            </View>
+                            <Text style={[styles.modalGoalValue, { color: '#8b5cf6', fontSize: 20 }]}>
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(weeks52Goal)}
+                            </Text>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.modalStartButton, { backgroundColor: '#8b5cf6', marginTop: 20 }]}
+                            onPress={() => {
+                                const template = CHALLENGE_TEMPLATES.find(t => t.id === '52-semanas');
+                                const slots = generate52WeeksSlots(weeksStartValue);
+                                startChallenge(template, {
+                                    title: weeksName.trim() || '52 Semanas',
+                                    goalAmount: weeks52Goal,
+                                    slots,
+                                });
+                            }}
+                        >
+                            <Text style={styles.modalStartButtonText}>Começar Desafio</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Desafio Chinês Modal */}
+            <Modal
+                visible={isChineseModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIsChineseModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Desafio Chinês</Text>
+                            <TouchableOpacity onPress={() => setIsChineseModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#000" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.emergencyLabel}>Quanto você quer juntar?</Text>
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <TextInput
+                                style={styles.amountInput}
+                                placeholder="0,00"
+                                keyboardType="numeric"
+                                value={chineseGoalInput}
+                                onChangeText={(v) => {
+                                    setChineseGoalInput(v);
+                                    const parsed = parseFloat(v.replace(',', '.'));
+                                    if (!isNaN(parsed) && parsed > 0) {
+                                        setChineseSlotPreview(generateChineseSlots(parsed));
+                                    } else {
+                                        setChineseSlotPreview([]);
+                                    }
+                                }}
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        {chineseSlotPreview.length > 0 && (
+                            <>
+                                <View style={styles.chinesePreviewInfo}>
+                                    <MaterialCommunityIcons name="cards-outline" size={18} color="#0ea5e9" />
+                                    <Text style={styles.chinesePreviewText}>
+                                        {chineseSlotPreview.length} envelopes gerados — valores entre{' '}
+                                        <Text style={{ fontWeight: '700', color: '#0ea5e9' }}>
+                                            {formatCurrency(Math.min(...chineseSlotPreview.map(s => s.value)))}
+                                        </Text>{' '}e{' '}
+                                        <Text style={{ fontWeight: '700', color: '#0ea5e9' }}>
+                                            {formatCurrency(Math.max(...chineseSlotPreview.map(s => s.value)))}
+                                        </Text>
+                                    </Text>
+                                </View>
+
+                                {/* Preview de alguns envelopes */}
+                                <View style={styles.chineseSlotPreviewRow}>
+                                    {chineseSlotPreview.slice(0, 6).map((s, i) => (
+                                        <View key={i} style={styles.chineseSlotPreviewTile}>
+                                            <Text style={styles.chineseSlotPreviewValue}>
+                                                {formatCurrency(s.value)}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                    {chineseSlotPreview.length > 6 && (
+                                        <View style={[styles.chineseSlotPreviewTile, { backgroundColor: '#E0F2FE' }]}>
+                                            <Text style={[styles.chineseSlotPreviewValue, { color: '#0ea5e9' }]}>
+                                                +{chineseSlotPreview.length - 6}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                <TouchableOpacity
+                                    style={styles.chineseRegenerateBtn}
+                                    onPress={() => {
+                                        const parsed = parseFloat(chineseGoalInput.replace(',', '.'));
+                                        if (!isNaN(parsed) && parsed > 0)
+                                            setChineseSlotPreview(generateChineseSlots(parsed));
+                                    }}
+                                >
+                                    <MaterialCommunityIcons name="refresh" size={16} color="#0ea5e9" />
+                                    <Text style={styles.chineseRegenerateText}>Gerar novos valores</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+
+                        <TouchableOpacity
+                            style={[
+                                styles.modalStartButton,
+                                { backgroundColor: '#0ea5e9', marginTop: 20, opacity: chineseSlotPreview.length === 0 ? 0.4 : 1 }
+                            ]}
+                            disabled={chineseSlotPreview.length === 0}
+                            onPress={() => {
+                                const template = CHALLENGE_TEMPLATES.find(t => t.id === 'desafio-chines');
+                                const goal = parseFloat(chineseGoalInput.replace(',', '.'));
+                                startChallenge(template, { goalAmount: goal, slots: chineseSlotPreview });
+                            }}
+                        >
+                            <Text style={styles.modalStartButtonText}>Começar Desafio</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Reserva de Emergência Modal */}
+            <Modal
+                visible={isEmergencyModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIsEmergencyModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Reserva de Emergência</Text>
+                            <TouchableOpacity onPress={() => setIsEmergencyModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#000" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Nome da caixinha */}
+                        <Text style={styles.emergencyLabel}>Nome da caixinha</Text>
+                        <View style={styles.emergencyNameInput}>
+                            <TextInput
+                                style={styles.emergencyNameField}
+                                value={emergencyName}
+                                onChangeText={setEmergencyName}
+                                placeholder="Ex: Reserva de Emergência"
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        {/* Perfil */}
+                        <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Qual é o seu perfil?</Text>
+                        <View style={styles.emergencyProfileToggle}>
+                            <TouchableOpacity
+                                style={[styles.emergencyProfileBtn, emergencyProfile === 'assalariado' && styles.emergencyProfileBtnActive]}
+                                onPress={() => setEmergencyProfile('assalariado')}
+                            >
+                                <MaterialCommunityIcons
+                                    name="briefcase-outline"
+                                    size={18}
+                                    color={emergencyProfile === 'assalariado' ? '#FFF' : '#64748B'}
+                                />
+                                <Text style={[styles.emergencyProfileText, emergencyProfile === 'assalariado' && styles.emergencyProfileTextActive]}>
+                                    Assalariado
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.emergencyProfileBtn, emergencyProfile === 'empreendedor' && styles.emergencyProfileBtnActive]}
+                                onPress={() => setEmergencyProfile('empreendedor')}
+                            >
+                                <MaterialCommunityIcons
+                                    name="rocket-launch-outline"
+                                    size={18}
+                                    color={emergencyProfile === 'empreendedor' ? '#FFF' : '#64748B'}
+                                />
+                                <Text style={[styles.emergencyProfileText, emergencyProfile === 'empreendedor' && styles.emergencyProfileTextActive]}>
+                                    Empreendedor
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Gastos mensais */}
+                        <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Gastos mensais</Text>
+                        {isFetchingSuggestion ? (
+                            <View style={styles.suggestionRow}>
+                                <ActivityIndicator size="small" color="#F87171" />
+                                <Text style={styles.suggestionLoadingText}>Analisando seus últimos meses...</Text>
+                            </View>
+                        ) : suggestedExpense !== null ? (
+                            <TouchableOpacity
+                                style={styles.suggestionBanner}
+                                onPress={() => setEmergencyMonthlyExpense(suggestedExpense.toFixed(2).replace('.', ','))}
+                                activeOpacity={0.7}
+                            >
+                                <MaterialCommunityIcons name="lightbulb-on-outline" size={16} color="#F87171" />
+                                <Text style={styles.suggestionText}>
+                                    Média dos últimos {suggestionMonths} {suggestionMonths === 1 ? 'mês' : 'meses'}:{' '}
+                                    <Text style={styles.suggestionValue}>{formatCurrency(suggestedExpense)}</Text>
+                                </Text>
+                                <Text style={styles.suggestionUse}>Usar</Text>
+                            </TouchableOpacity>
+                        ) : null}
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <TextInput
+                                style={styles.amountInput}
+                                placeholder="0,00"
+                                keyboardType="numeric"
+                                value={emergencyMonthlyExpense}
+                                onChangeText={setEmergencyMonthlyExpense}
+                                placeholderTextColor="#CBD5E1"
+                            />
+                        </View>
+
+                        {/* Meta calculada */}
+                        <View style={[styles.modalGoalBox, { marginTop: 18, backgroundColor: '#FFF1F1', borderRadius: 16 }]}>
+                            <View>
+                                <Text style={styles.modalGoalLabel}>Meta calculada</Text>
+                                <Text style={{ fontSize: 11, color: '#94A3B8' }}>
+                                    {emergencyProfile === 'empreendedor' ? '12 meses de gastos' : '6 meses de gastos'}
+                                </Text>
+                            </View>
+                            <Text style={[styles.modalGoalValue, { color: '#F87171', fontSize: 20 }]}>
+                                {formatCurrency(emergencyGoal)}
+                            </Text>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.modalStartButton, { backgroundColor: '#F87171', marginTop: 20 }]}
+                            onPress={() => {
+                                const template = CHALLENGE_TEMPLATES.find(t => t.id === 'reserva-emergencia');
+                                startChallenge(template, {
+                                    title: emergencyName.trim() || 'Reserva de Emergência',
+                                    goalAmount: emergencyGoal,
+                                });
+                            }}
+                            disabled={emergencyGoal <= 0}
+                        >
+                            <Text style={styles.modalStartButtonText}>Criar Reserva</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
@@ -445,81 +1070,307 @@ const AddChallengesScreen = () => {
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Detalhes do Desafio</Text>
-                            <TouchableOpacity onPress={() => setIsDetailModalVisible(false)}>
-                                <Ionicons name="close" size={24} color="#000" />
-                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <TouchableOpacity
+                                    style={styles.detailActionBtn}
+                                    onPress={() => {
+                                        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail?.id) || selectedChallengeDetail;
+                                        const isSlotBased = liveData?.templateId === 'desafio-chines' || liveData?.templateId === '52-semanas';
+                                        setEditName(liveData?.title || '');
+                                        setEditGoal(isSlotBased ? '' : String(liveData?.goalAmount || ''));
+                                        setIsEditChallengeModalVisible(true);
+                                    }}
+                                >
+                                    <Ionicons name="create-outline" size={20} color="#64748B" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.detailActionBtn, { backgroundColor: '#FEF2F2' }]}
+                                    onPress={() => {
+                                        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail?.id) || selectedChallengeDetail;
+                                        handleDeleteChallenge(liveData);
+                                    }}
+                                >
+                                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setIsDetailModalVisible(false)}>
+                                    <Ionicons name="close" size={24} color="#000" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                        {selectedChallengeDetail && (
-                            <View>
-                                <View style={styles.detailCard}>
-                                    <View style={[styles.detailIconBox, { backgroundColor: selectedChallengeDetail.color + '15' }]}>
-                                        <MaterialCommunityIcons name={selectedChallengeDetail.iconName} size={40} color={selectedChallengeDetail.color} />
-                                    </View>
-                                    <Text style={styles.detailTitle}>{selectedChallengeDetail.title}</Text>
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Meta:</Text>
-                                        <Text style={styles.detailValue}>{formatCurrency(selectedChallengeDetail.goalAmount)}</Text>
-                                    </View>
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Acumulado:</Text>
-                                        <Text style={styles.detailValue}>{formatCurrency(selectedChallengeDetail.currentAmount)}</Text>
-                                    </View>
-                                    
-                                    <View style={styles.addValueContainer}>
-                                        <View style={styles.operationToggle}>
-                                            <TouchableOpacity 
-                                                style={[styles.opButton, operationType === 'add' && styles.opButtonActive]}
-                                                onPress={() => setOperationType('add')}
-                                            >
-                                                <Ionicons name="add-circle" size={20} color={operationType === 'add' ? '#FFF' : '#94A3B8'} />
-                                                <Text style={[styles.opButtonText, operationType === 'add' && styles.opButtonTextActive]}>Adicionar</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity 
-                                                style={[styles.opButton, operationType === 'subtract' && styles.opButtonActiveSubtract]}
-                                                onPress={() => setOperationType('subtract')}
-                                            >
-                                                <Ionicons name="remove-circle" size={20} color={operationType === 'subtract' ? '#FFF' : '#94A3B8'} />
-                                                <Text style={[styles.opButtonText, operationType === 'subtract' && styles.opButtonTextActive]}>Retirar</Text>
-                                            </TouchableOpacity>
+                        {selectedChallengeDetail && (() => {
+                            const liveDetail = startedChallenges.find(c => c.id === selectedChallengeDetail.id) || selectedChallengeDetail;
+                            const isChinese = liveDetail.templateId === 'desafio-chines';
+                            const is52Weeks = liveDetail.templateId === '52-semanas';
+                            const slots = liveDetail.slots || [];
+                            const pickedCount = slots.filter(s => s.picked).length;
+                            const remaining = slots.filter(s => !s.picked).length;
+
+                            if (isChinese) {
+                                return (
+                                    <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 500 }}>
+                                        {/* Cabeçalho */}
+                                        <View style={styles.detailCard}>
+                                            <View style={[styles.detailIconBox, { backgroundColor: '#E0F2FE' }]}>
+                                                <MaterialCommunityIcons name="cards-outline" size={40} color="#0ea5e9" />
+                                            </View>
+                                            <Text style={styles.detailTitle}>{liveDetail.title}</Text>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Meta:</Text>
+                                                <Text style={styles.detailValue}>{formatCurrency(liveDetail.goalAmount)}</Text>
+                                            </View>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Acumulado:</Text>
+                                                <Text style={[styles.detailValue, { color: '#0ea5e9' }]}>{formatCurrency(liveDetail.currentAmount || 0)}</Text>
+                                            </View>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Envelopes restantes:</Text>
+                                                <Text style={styles.detailValue}>{remaining} / {slots.length}</Text>
+                                            </View>
                                         </View>
 
-                                        <View style={styles.inputWrapper}>
-                                            <Text style={styles.currencyPrefix}>R$</Text>
-                                            <TextInput
-                                                style={styles.amountInput}
-                                                placeholder="0,00"
-                                                keyboardType="numeric"
-                                                value={amountToAdd}
-                                                onChangeText={setAmountToAdd}
-                                                disabled={isSubmitting}
-                                            />
+                                        {/* Grade de envelopes */}
+                                        <Text style={[styles.emergencyLabel, { marginHorizontal: 4, marginBottom: 12 }]}>
+                                            Toque para marcar um envelope como pago
+                                        </Text>
+                                        <View style={styles.chineseSlotsGrid}>
+                                            {slots.map((slot, index) => (
+                                                <TouchableOpacity
+                                                    key={index}
+                                                    style={[
+                                                        styles.chineseSlotTile,
+                                                        slot.picked && styles.chineseSlotTilePicked,
+                                                    ]}
+                                                    onPress={() => handlePickSlot(index)}
+                                                    disabled={slot.picked || isSubmitting}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    {slot.picked ? (
+                                                        <Ionicons name="checkmark" size={18} color="#94A3B8" />
+                                                    ) : (
+                                                        <Text style={styles.chineseSlotValue}>
+                                                            {formatCurrency(slot.value)}
+                                                        </Text>
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
                                         </View>
-                                        <TouchableOpacity 
-                                            style={[
-                                                styles.confirmAddButton, 
-                                                { backgroundColor: operationType === 'add' ? (selectedChallengeDetail.color || '#3b82f6') : '#EF4444' }
-                                            ]}
-                                            onPress={handleUpdateChallengeValue}
-                                            disabled={isSubmitting}
-                                        >
-                                            {isSubmitting ? (
-                                                <ActivityIndicator color="#FFF" />
-                                            ) : (
-                                                <Text style={styles.confirmAddButtonText}>
-                                                    {operationType === 'add' ? 'Confirmar Aporte' : 'Confirmar Retirada'}
-                                                </Text>
-                                            )}
-                                        </TouchableOpacity>
+                                    </ScrollView>
+                                );
+                            }
+
+                            if (is52Weeks) {
+                                return (
+                                    <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 500 }}>
+                                        <View style={styles.detailCard}>
+                                            <View style={[styles.detailIconBox, { backgroundColor: '#F5F3FF' }]}>
+                                                <Ionicons name="calendar-outline" size={40} color="#8b5cf6" />
+                                            </View>
+                                            <Text style={styles.detailTitle}>{liveDetail.title}</Text>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Meta total:</Text>
+                                                <Text style={styles.detailValue}>{formatCurrency(liveDetail.goalAmount)}</Text>
+                                            </View>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Acumulado:</Text>
+                                                <Text style={[styles.detailValue, { color: '#8b5cf6' }]}>{formatCurrency(liveDetail.currentAmount || 0)}</Text>
+                                            </View>
+                                            <View style={styles.detailRow}>
+                                                <Text style={styles.detailLabel}>Semanas concluídas:</Text>
+                                                <Text style={styles.detailValue}>{pickedCount} / {slots.length}</Text>
+                                            </View>
+                                        </View>
+
+                                        <Text style={[styles.emergencyLabel, { marginHorizontal: 4, marginBottom: 12 }]}>
+                                            Toque para marcar a semana como paga
+                                        </Text>
+                                        <View style={styles.weeksGrid}>
+                                            {slots.map((slot, index) => (
+                                                <TouchableOpacity
+                                                    key={index}
+                                                    style={[
+                                                        styles.weekTile,
+                                                        slot.picked && styles.weekTilePicked,
+                                                    ]}
+                                                    onPress={() => handlePickSlot(index)}
+                                                    disabled={slot.picked || isSubmitting}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    {slot.picked ? (
+                                                        <Ionicons name="checkmark" size={14} color="#C4B5FD" />
+                                                    ) : (
+                                                        <>
+                                                            <Text style={styles.weekTileNumber}>S{slot.week}</Text>
+                                                            <Text style={styles.weekTileValue}>{formatCurrency(slot.value)}</Text>
+                                                        </>
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </ScrollView>
+                                );
+                            }
+
+                            // UI genérica para outros desafios
+                            return (
+                                <View>
+                                    <View style={styles.detailCard}>
+                                        <View style={[styles.detailIconBox, { backgroundColor: liveDetail.color + '15' }]}>
+                                            <MaterialCommunityIcons name={liveDetail.iconName} size={40} color={liveDetail.color} />
+                                        </View>
+                                        <Text style={styles.detailTitle}>{liveDetail.title}</Text>
+                                        <View style={styles.detailRow}>
+                                            <Text style={styles.detailLabel}>Meta:</Text>
+                                            <Text style={styles.detailValue}>{formatCurrency(liveDetail.goalAmount)}</Text>
+                                        </View>
+                                        <View style={styles.detailRow}>
+                                            <Text style={styles.detailLabel}>Acumulado:</Text>
+                                            <Text style={styles.detailValue}>{formatCurrency(liveDetail.currentAmount)}</Text>
+                                        </View>
+
+                                        <View style={styles.addValueContainer}>
+                                            <View style={styles.operationToggle}>
+                                                <TouchableOpacity
+                                                    style={[styles.opButton, operationType === 'add' && styles.opButtonActive]}
+                                                    onPress={() => setOperationType('add')}
+                                                >
+                                                    <Ionicons name="add-circle" size={20} color={operationType === 'add' ? '#FFF' : '#94A3B8'} />
+                                                    <Text style={[styles.opButtonText, operationType === 'add' && styles.opButtonTextActive]}>Adicionar</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.opButton, operationType === 'subtract' && styles.opButtonActiveSubtract]}
+                                                    onPress={() => setOperationType('subtract')}
+                                                >
+                                                    <Ionicons name="remove-circle" size={20} color={operationType === 'subtract' ? '#FFF' : '#94A3B8'} />
+                                                    <Text style={[styles.opButtonText, operationType === 'subtract' && styles.opButtonTextActive]}>Retirar</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            <View style={styles.inputWrapper}>
+                                                <Text style={styles.currencyPrefix}>R$</Text>
+                                                <TextInput
+                                                    style={styles.amountInput}
+                                                    placeholder="0,00"
+                                                    keyboardType="numeric"
+                                                    value={amountToAdd}
+                                                    onChangeText={setAmountToAdd}
+                                                    disabled={isSubmitting}
+                                                />
+                                            </View>
+                                            <TouchableOpacity
+                                                style={[
+                                                    styles.confirmAddButton,
+                                                    { backgroundColor: operationType === 'add' ? (liveDetail.color || '#3b82f6') : '#EF4444' }
+                                                ]}
+                                                onPress={handleUpdateChallengeValue}
+                                                disabled={isSubmitting}
+                                            >
+                                                {isSubmitting ? (
+                                                    <ActivityIndicator color="#FFF" />
+                                                ) : (
+                                                    <Text style={styles.confirmAddButtonText}>
+                                                        {operationType === 'add' ? 'Confirmar Aporte' : 'Confirmar Retirada'}
+                                                    </Text>
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 </View>
-                            </View>
-                        )}
-                        <TouchableOpacity 
+                            );
+                        })()}
+                        <TouchableOpacity
                             style={styles.modalCloseButton}
                             onPress={() => setIsDetailModalVisible(false)}
                         >
                             <Text style={styles.modalCloseButtonText}>Fechar</Text>
                         </TouchableOpacity>
+
+                        {/* Delete inline confirmation overlay */}
+                        {isDeleteConfirmVisible && (
+                            <View style={styles.deleteOverlay}>
+                                <View style={styles.deleteCard}>
+                                    <View style={styles.deleteIconCircle}>
+                                        <Ionicons name="trash-outline" size={32} color="#EF4444" />
+                                    </View>
+                                    <Text style={styles.deleteTitle}>Excluir Desafio</Text>
+                                    <Text style={styles.deleteMessage}>
+                                        Tem certeza que deseja excluir{' '}
+                                        <Text style={{ fontWeight: '700', color: '#0F172A' }}>"{challengeToDelete?.title}"</Text>?
+                                        {' '}Todo o progresso será perdido e essa ação não pode ser desfeita.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.deleteConfirmBtn}
+                                        onPress={confirmDelete}
+                                    >
+                                        <Ionicons name="trash-outline" size={18} color="#FFF" />
+                                        <Text style={styles.deleteConfirmBtnText}>Sim, excluir</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.deleteCancelBtn}
+                                        onPress={() => setIsDeleteConfirmVisible(false)}
+                                    >
+                                        <Text style={styles.deleteCancelBtnText}>Cancelar</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Edit inline overlay */}
+                        {isEditChallengeModalVisible && (
+                            <View style={styles.deleteOverlay}>
+                                <View style={[styles.deleteCard, { alignItems: 'stretch' }]}>
+                                    <View style={styles.modalHeader}>
+                                        <Text style={styles.modalTitle}>Editar Desafio</Text>
+                                        <TouchableOpacity onPress={() => setIsEditChallengeModalVisible(false)}>
+                                            <Ionicons name="close" size={24} color="#000" />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <Text style={styles.emergencyLabel}>Nome do desafio</Text>
+                                    <View style={styles.emergencyNameInput}>
+                                        <TextInput
+                                            style={styles.emergencyNameField}
+                                            value={editName}
+                                            onChangeText={setEditName}
+                                            placeholder="Nome do desafio"
+                                            placeholderTextColor="#CBD5E1"
+                                        />
+                                    </View>
+
+                                    {(() => {
+                                        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail?.id);
+                                        const isSlotBased = liveData?.templateId === 'desafio-chines' || liveData?.templateId === '52-semanas';
+                                        if (isSlotBased) return null;
+                                        return (
+                                            <>
+                                                <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Meta de valor</Text>
+                                                <View style={styles.inputWrapper}>
+                                                    <Text style={styles.currencyPrefix}>R$</Text>
+                                                    <TextInput
+                                                        style={styles.amountInput}
+                                                        placeholder="0,00"
+                                                        keyboardType="numeric"
+                                                        value={editGoal}
+                                                        onChangeText={setEditGoal}
+                                                        placeholderTextColor="#CBD5E1"
+                                                    />
+                                                </View>
+                                            </>
+                                        );
+                                    })()}
+
+                                    <TouchableOpacity
+                                        style={[styles.modalStartButton, { backgroundColor: '#3b82f6', marginTop: 24 }]}
+                                        onPress={handleSaveEdit}
+                                        disabled={isSubmitting}
+                                    >
+                                        {isSubmitting ? (
+                                            <ActivityIndicator color="#FFF" />
+                                        ) : (
+                                            <Text style={styles.modalStartButtonText}>Salvar Alterações</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -1028,6 +1879,284 @@ const styles = StyleSheet.create({
         color: '#64748B',
         fontSize: 16,
         fontWeight: '600',
+    },
+    detailActionBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: '#F1F5F9',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    deleteOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 28,
+        padding: 24,
+        zIndex: 100,
+    },
+    deleteCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 28,
+        padding: 28,
+        width: '100%',
+        maxWidth: 340,
+        alignItems: 'center',
+    },
+    deleteIconCircle: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#FEF2F2',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    deleteTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#0F172A',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    deleteMessage: {
+        fontSize: 14,
+        color: '#64748B',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 24,
+    },
+    deleteConfirmBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#EF4444',
+        borderRadius: 16,
+        height: 52,
+        width: '100%',
+        marginBottom: 10,
+    },
+    deleteConfirmBtnText: {
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    deleteCancelBtn: {
+        height: 44,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    deleteCancelBtnText: {
+        color: '#64748B',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    emergencyLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+        marginBottom: 8,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    emergencyNameInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingHorizontal: 14,
+        height: 52,
+    },
+    emergencyNameField: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#0F172A',
+    },
+    emergencyProfileToggle: {
+        flexDirection: 'row',
+        backgroundColor: '#E2E8F0',
+        borderRadius: 14,
+        padding: 4,
+        gap: 4,
+    },
+    emergencyProfileBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 10,
+        gap: 5,
+    },
+    emergencyProfileBtnActive: {
+        backgroundColor: '#F87171',
+    },
+    emergencyProfileText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    emergencyProfileTextActive: {
+        color: '#FFF',
+    },
+    emergencyProfileMultiplier: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#94A3B8',
+    },
+    suggestionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 10,
+    },
+    suggestionLoadingText: {
+        fontSize: 13,
+        color: '#94A3B8',
+    },
+    suggestionBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF1F1',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginBottom: 10,
+        gap: 6,
+        borderWidth: 1,
+        borderColor: '#FECACA',
+    },
+    suggestionText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#64748B',
+    },
+    suggestionValue: {
+        fontWeight: '700',
+        color: '#F87171',
+    },
+    suggestionUse: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#F87171',
+    },
+    // Desafio Chinês
+    chinesePreviewInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#E0F2FE',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginTop: 14,
+        marginBottom: 10,
+    },
+    chinesePreviewText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#0369A1',
+        lineHeight: 18,
+    },
+    chineseSlotPreviewRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 10,
+    },
+    chineseSlotPreviewTile: {
+        backgroundColor: '#F0F9FF',
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+    },
+    chineseSlotPreviewValue: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#0369A1',
+    },
+    chineseRegenerateBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        marginTop: 2,
+        marginBottom: 4,
+    },
+    chineseRegenerateText: {
+        fontSize: 13,
+        color: '#0ea5e9',
+        fontWeight: '600',
+    },
+    chineseSlotsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        paddingBottom: 20,
+    },
+    chineseSlotTile: {
+        width: '30%',
+        aspectRatio: 1.8,
+        backgroundColor: '#F0F9FF',
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#BAE6FD',
+    },
+    chineseSlotTilePicked: {
+        backgroundColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
+    },
+    chineseSlotValue: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#0369A1',
+    },
+    weeksGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 7,
+        paddingBottom: 20,
+    },
+    weekTile: {
+        width: '22%',
+        aspectRatio: 1.4,
+        backgroundColor: '#F5F3FF',
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#DDD6FE',
+    },
+    weekTilePicked: {
+        backgroundColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
+    },
+    weekTileNumber: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#7C3AED',
+        marginBottom: 2,
+    },
+    weekTileValue: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#5B21B6',
     },
 });
 
