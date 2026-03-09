@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TrailIcon from '../../assets/icons/trail.svg';
 import WalletIcon from '../../assets/icons/wallet.svg';
 import GraphIcon from '../../assets/icons/graph.svg';
@@ -7,6 +8,7 @@ import TrofeuIcon from '../../assets/icons/trofeu.svg';
 import ProfileIcon from '../../assets/icons/profile.svg';
 
 const BottomTab = ({ state, descriptors, navigation }) => {
+    const insets = useSafeAreaInsets();
     const icons = {
         Progress: TrailIcon,
         Wallet: WalletIcon,
@@ -16,7 +18,7 @@ const BottomTab = ({ state, descriptors, navigation }) => {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         {state.routes.map((route, index) => {
             const { options } = descriptors[route.key];
             const isFocused = state.index === index;
@@ -71,13 +73,12 @@ const BottomTab = ({ state, descriptors, navigation }) => {
 
 const styles = StyleSheet.create({
     container: {
-        height: 84,
         width: '100%',
         flexDirection: 'row',
         backgroundColor: '#FFFFFF',
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
-        paddingVertical: 8,
+        paddingTop: 8,
         paddingHorizontal: 16,
         ...Platform.select({
             ios: {

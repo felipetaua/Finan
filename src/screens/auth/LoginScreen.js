@@ -35,7 +35,7 @@ export default function LoginScreen({ navigation }) {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
         androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
         webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        redirectUri: process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI,
+        redirectUri: makeRedirectUri({ scheme: 'finan' }),
     });
 
     useEffect(() => {

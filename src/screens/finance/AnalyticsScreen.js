@@ -10,7 +10,7 @@ import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestor
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount }) => {
+const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount, selectedKey }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     let currentOffset = 0;
@@ -18,6 +18,8 @@ const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount }) => {
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     };
+
+    const selectedItem = selectedKey ? data.find(d => d.key === selectedKey) : null;
 
     return (
         <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
@@ -41,6 +43,7 @@ const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount }) => {
                     strokeLinecap="round"
                     transform={`rotate(${rotation}, ${size / 2}, ${size / 2})`}
                     fill="transparent"
+                    opacity={selectedKey && item.key !== selectedKey ? 0.15 : 1}
                 />
                 );
             }) : (
@@ -56,8 +59,18 @@ const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount }) => {
             </G>
         </Svg>
         <View style={styles.chartCenter}>
-            <Text style={styles.chartLabel}>Total gastos</Text>
-            <Text style={styles.chartValue}>{formatCurrency(totalAmount)}</Text>
+            {selectedItem ? (
+                <>
+                    <Text style={styles.chartLabel} numberOfLines={1}>{selectedItem.key}</Text>
+                    <Text style={styles.chartValue}>{formatCurrency(selectedItem.amount)}</Text>
+                    <Text style={styles.chartPercent}>{Math.round(selectedItem.value)}%</Text>
+                </>
+            ) : (
+                <>
+                    <Text style={styles.chartLabel}>Total gastos</Text>
+                    <Text style={styles.chartValue}>{formatCurrency(totalAmount)}</Text>
+                </>
+            )}
         </View>
     </View>
     );
@@ -77,6 +90,7 @@ const AnalyticsScreen = () => {
     const [percentageSpent, setPercentageSpent] = useState(0);
     const [percentageLeft, setPercentageLeft] = useState(0);
     const [activePage, setActivePage] = useState(0);
+    const [selectedCategory, setSelectedCategory] = useState(null);
 
     const months = [
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -150,6 +164,7 @@ const AnalyticsScreen = () => {
                 key: cat.key,
                 value: totalE > 0 ? (cat.amount / totalE) * 100 : 0,
                 color: cat.color,
+                amount: cat.amount,
                 label: `${cat.key} ${totalE > 0 ? Math.round((cat.amount / totalE) * 100) : 0}%`
             }));
 
@@ -163,6 +178,7 @@ const AnalyticsScreen = () => {
         const newDate = new Date(currentDate);
         newDate.setMonth(newDate.getMonth() + num);
         setCurrentDate(newDate);
+        setSelectedCategory(null);
     };
 
     const formatCurrency = (value) => {
@@ -231,7 +247,7 @@ const AnalyticsScreen = () => {
                 >
                     {/* Page 1: Gráfico de Rosca */}
                     <View style={styles.chartSlide}>
-                        <DonutChart data={chartData} totalAmount={totalExpenses} />
+                        <DonutChart data={chartData} totalAmount={totalExpenses} selectedKey={selectedCategory} />
                     </View>
 
                     {/* Page 2: Resumo de Métricas */}
@@ -284,10 +300,15 @@ const AnalyticsScreen = () => {
 
                 <View style={styles.legendContainer}>
                 {chartData.map((item, index) => (
-                    <View key={index} style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                    <Text style={styles.legendText}>{item.label}</Text>
-                    </View>
+                    <TouchableOpacity
+                        key={index}
+                        style={[styles.legendItem, selectedCategory === item.key && { borderColor: item.color, borderWidth: 1.5 }]}
+                        onPress={() => setSelectedCategory(selectedCategory === item.key ? null : item.key)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                        <Text style={styles.legendText}>{item.label}</Text>
+                    </TouchableOpacity>
                 ))}
                 </View>
 
@@ -455,9 +476,14 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     chartValue: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#000',
+    },
+    chartPercent: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginTop: 2,
     },
     legendContainer: {
         flexDirection: 'row',
