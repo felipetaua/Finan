@@ -11,14 +11,15 @@ import {
     Modal, 
     Platform,
     ActivityIndicator,
-    TextInput
+    TextInput,
+    Alert
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { auth, db } from '../../services/firebaseConfig';
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot, doc, updateDoc, increment, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, doc, updateDoc, increment, getDocs, deleteDoc } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
@@ -139,6 +140,15 @@ const AddChallengesScreen = () => {
     const [isSavingsModalVisible, setIsSavingsModalVisible] = useState(false);
     const [savingsName, setSavingsName] = useState('Guardando Dinheiro');
     const [savingsGoalInput, setSavingsGoalInput] = useState('');
+
+    // Edit Challenge
+    const [isEditChallengeModalVisible, setIsEditChallengeModalVisible] = useState(false);
+    const [editName, setEditName] = useState('');
+    const [editGoal, setEditGoal] = useState('');
+
+    // Delete Confirm
+    const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
+    const [challengeToDelete, setChallengeToDelete] = useState(null);
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -403,6 +413,52 @@ const AddChallengesScreen = () => {
         }
     };
 
+    const handleDeleteChallenge = (challenge) => {
+        setChallengeToDelete(challenge);
+        setIsDeleteConfirmVisible(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!challengeToDelete) return;
+        try {
+            await deleteDoc(doc(db, 'user_challenges', challengeToDelete.id));
+            setIsDeleteConfirmVisible(false);
+            setChallengeToDelete(null);
+            setIsDetailModalVisible(false);
+            setSelectedChallengeDetail(null);
+        } catch (e) {
+            console.error('Erro ao excluir desafio:', e);
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!selectedChallengeDetail || isSubmitting) return;
+        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail.id);
+        const isChinese = liveData?.templateId === 'desafio-chines';
+        const is52Weeks = liveData?.templateId === '52-semanas';
+        const isSlotBased = isChinese || is52Weeks;
+
+        const updates = {};
+        if (editName.trim()) updates.title = editName.trim();
+        if (!isSlotBased) {
+            const goal = parseFloat(editGoal.replace(',', '.'));
+            if (!isNaN(goal) && goal > 0) updates.goalAmount = goal;
+        }
+        if (Object.keys(updates).length === 0) {
+            setIsEditChallengeModalVisible(false);
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await updateDoc(doc(db, 'user_challenges', selectedChallengeDetail.id), updates);
+            setIsEditChallengeModalVisible(false);
+        } catch (e) {
+            console.error('Erro ao editar desafio:', e);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
     };
@@ -544,7 +600,7 @@ const AddChallengesScreen = () => {
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Desafios Iniciados</Text>
                     <TouchableOpacity>
-                        <Text style={styles.sectionDetails}>Minimizar</Text>
+                        <Text style={styles.sectionDetails}>Detalhes</Text>
                     </TouchableOpacity>
                 </View>
                 
@@ -1014,9 +1070,32 @@ const AddChallengesScreen = () => {
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Detalhes do Desafio</Text>
-                            <TouchableOpacity onPress={() => setIsDetailModalVisible(false)}>
-                                <Ionicons name="close" size={24} color="#000" />
-                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <TouchableOpacity
+                                    style={styles.detailActionBtn}
+                                    onPress={() => {
+                                        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail?.id) || selectedChallengeDetail;
+                                        const isSlotBased = liveData?.templateId === 'desafio-chines' || liveData?.templateId === '52-semanas';
+                                        setEditName(liveData?.title || '');
+                                        setEditGoal(isSlotBased ? '' : String(liveData?.goalAmount || ''));
+                                        setIsEditChallengeModalVisible(true);
+                                    }}
+                                >
+                                    <Ionicons name="create-outline" size={20} color="#64748B" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.detailActionBtn, { backgroundColor: '#FEF2F2' }]}
+                                    onPress={() => {
+                                        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail?.id) || selectedChallengeDetail;
+                                        handleDeleteChallenge(liveData);
+                                    }}
+                                >
+                                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setIsDetailModalVisible(false)}>
+                                    <Ionicons name="close" size={24} color="#000" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                         {selectedChallengeDetail && (() => {
                             const liveDetail = startedChallenges.find(c => c.id === selectedChallengeDetail.id) || selectedChallengeDetail;
@@ -1203,6 +1282,95 @@ const AddChallengesScreen = () => {
                         >
                             <Text style={styles.modalCloseButtonText}>Fechar</Text>
                         </TouchableOpacity>
+
+                        {/* Delete inline confirmation overlay */}
+                        {isDeleteConfirmVisible && (
+                            <View style={styles.deleteOverlay}>
+                                <View style={styles.deleteCard}>
+                                    <View style={styles.deleteIconCircle}>
+                                        <Ionicons name="trash-outline" size={32} color="#EF4444" />
+                                    </View>
+                                    <Text style={styles.deleteTitle}>Excluir Desafio</Text>
+                                    <Text style={styles.deleteMessage}>
+                                        Tem certeza que deseja excluir{' '}
+                                        <Text style={{ fontWeight: '700', color: '#0F172A' }}>"{challengeToDelete?.title}"</Text>?
+                                        {' '}Todo o progresso será perdido e essa ação não pode ser desfeita.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.deleteConfirmBtn}
+                                        onPress={confirmDelete}
+                                    >
+                                        <Ionicons name="trash-outline" size={18} color="#FFF" />
+                                        <Text style={styles.deleteConfirmBtnText}>Sim, excluir</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.deleteCancelBtn}
+                                        onPress={() => setIsDeleteConfirmVisible(false)}
+                                    >
+                                        <Text style={styles.deleteCancelBtnText}>Cancelar</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Edit inline overlay */}
+                        {isEditChallengeModalVisible && (
+                            <View style={styles.deleteOverlay}>
+                                <View style={[styles.deleteCard, { alignItems: 'stretch' }]}>
+                                    <View style={styles.modalHeader}>
+                                        <Text style={styles.modalTitle}>Editar Desafio</Text>
+                                        <TouchableOpacity onPress={() => setIsEditChallengeModalVisible(false)}>
+                                            <Ionicons name="close" size={24} color="#000" />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <Text style={styles.emergencyLabel}>Nome do desafio</Text>
+                                    <View style={styles.emergencyNameInput}>
+                                        <TextInput
+                                            style={styles.emergencyNameField}
+                                            value={editName}
+                                            onChangeText={setEditName}
+                                            placeholder="Nome do desafio"
+                                            placeholderTextColor="#CBD5E1"
+                                        />
+                                    </View>
+
+                                    {(() => {
+                                        const liveData = startedChallenges.find(c => c.id === selectedChallengeDetail?.id);
+                                        const isSlotBased = liveData?.templateId === 'desafio-chines' || liveData?.templateId === '52-semanas';
+                                        if (isSlotBased) return null;
+                                        return (
+                                            <>
+                                                <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Meta de valor</Text>
+                                                <View style={styles.inputWrapper}>
+                                                    <Text style={styles.currencyPrefix}>R$</Text>
+                                                    <TextInput
+                                                        style={styles.amountInput}
+                                                        placeholder="0,00"
+                                                        keyboardType="numeric"
+                                                        value={editGoal}
+                                                        onChangeText={setEditGoal}
+                                                        placeholderTextColor="#CBD5E1"
+                                                    />
+                                                </View>
+                                            </>
+                                        );
+                                    })()}
+
+                                    <TouchableOpacity
+                                        style={[styles.modalStartButton, { backgroundColor: '#3b82f6', marginTop: 24 }]}
+                                        onPress={handleSaveEdit}
+                                        disabled={isSubmitting}
+                                    >
+                                        {isSubmitting ? (
+                                            <ActivityIndicator color="#FFF" />
+                                        ) : (
+                                            <Text style={styles.modalStartButtonText}>Salvar Alterações</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -1710,6 +1878,85 @@ const styles = StyleSheet.create({
     modalCloseButtonText: {
         color: '#64748B',
         fontSize: 16,
+        fontWeight: '600',
+    },
+    detailActionBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: '#F1F5F9',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    deleteOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 28,
+        padding: 24,
+        zIndex: 100,
+    },
+    deleteCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 28,
+        padding: 28,
+        width: '100%',
+        maxWidth: 340,
+        alignItems: 'center',
+    },
+    deleteIconCircle: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#FEF2F2',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    deleteTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#0F172A',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    deleteMessage: {
+        fontSize: 14,
+        color: '#64748B',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 24,
+    },
+    deleteConfirmBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#EF4444',
+        borderRadius: 16,
+        height: 52,
+        width: '100%',
+        marginBottom: 10,
+    },
+    deleteConfirmBtnText: {
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    deleteCancelBtn: {
+        height: 44,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    deleteCancelBtnText: {
+        color: '#64748B',
+        fontSize: 15,
         fontWeight: '600',
     },
     emergencyLabel: {
