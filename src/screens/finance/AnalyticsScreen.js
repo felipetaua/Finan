@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Platform, Dimensions, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
@@ -11,7 +11,7 @@ import { useCurrency } from '../../context/CurrencyContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount, selectedKey, formatCurrency }) => {
+const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount, selectedKey, formatCurrency, centerLabel = 'Total gastos' }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     let currentOffset = 0;
@@ -64,7 +64,7 @@ const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount, selectedK
                 </>
             ) : (
                 <>
-                    <Text style={styles.chartLabel}>Total gastos</Text>
+                    <Text style={styles.chartLabel}>{centerLabel}</Text>
                     <Text style={styles.chartValue}>{formatCurrency(totalAmount)}</Text>
                 </>
             )}
@@ -89,6 +89,9 @@ const AnalyticsScreen = () => {
     const [percentageLeft, setPercentageLeft] = useState(0);
     const [activePage, setActivePage] = useState(0);
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [viewPeriod, setViewPeriod] = useState('mensal'); // 'mensal' | 'anual'
+    const [viewType, setViewType] = useState('despesas'); // 'despesas' | 'renda' | 'ambos'
+    const [isSettingsVisible, setIsSettingsVisible] = useState(false);
 
     const months = [
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -98,9 +101,13 @@ const AnalyticsScreen = () => {
     useEffect(() => {
         if (!user) return;
 
-        // Definir início e fim do mês selecionado
-        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        // Definir intervalo conforme período selecionado
+        const startDate = viewPeriod === 'anual'
+            ? new Date(currentDate.getFullYear(), 0, 1)
+            : new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const endDate = viewPeriod === 'anual'
+            ? new Date(currentDate.getFullYear(), 11, 31, 23, 59, 59)
+            : new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
 
         const q = query(
             collection(db, "transactions"),
@@ -120,22 +127,27 @@ const AnalyticsScreen = () => {
                 return dateB - dateA;
             });
 
-            // Filtrar localmente por data 
-            const filteredTrans = allTrans.filter(t => {
+            // Filtrar localmente por data
+            const periodTrans = allTrans.filter(t => {
                 if (!t.date) return false;
                 const d = new Date(t.date.seconds * 1000);
-                return d >= startOfMonth && d <= endOfMonth;
+                return d >= startDate && d <= endDate;
             });
 
-            setTransactions(filteredTrans);
+            // Filtrar lista de transações conforme tipo selecionado
+            const displayTrans = viewType === 'ambos'
+                ? periodTrans
+                : periodTrans.filter(t => t.type === (viewType === 'despesas' ? 'expense' : 'income'));
 
-            // Calcular totais
-            const expenses = filteredTrans.filter(t => t.type === 'expense');
+            setTransactions(displayTrans);
+
+            // Calcular totais sempre com todos do período
+            const expenses = periodTrans.filter(t => t.type === 'expense');
             const totalE = expenses.reduce((acc, curr) => acc + curr.amount, 0);
-            
-            const income = filteredTrans.filter(t => t.type === 'income');
+
+            const income = periodTrans.filter(t => t.type === 'income');
             const totalI = income.reduce((acc, curr) => acc + curr.amount, 0);
-            
+
             const savings = totalI - totalE;
             const pSpent = totalI > 0 ? (totalE / totalI) * 100 : 0;
             const pLeft = 100 - pSpent;
@@ -146,8 +158,12 @@ const AnalyticsScreen = () => {
             setPercentageSpent(pSpent);
             setPercentageLeft(pLeft);
 
+            // Gráfico de categorias conforme tipo selecionado
+            const chartSource = viewType === 'renda' ? income : expenses;
+            const chartTotal = viewType === 'renda' ? totalI : totalE;
+
             const categoryMap = {};
-            expenses.forEach(t => {
+            chartSource.forEach(t => {
                 if (!categoryMap[t.category]) {
                     categoryMap[t.category] = {
                         key: t.category,
@@ -160,21 +176,25 @@ const AnalyticsScreen = () => {
 
             const data = Object.values(categoryMap).map(cat => ({
                 key: cat.key,
-                value: totalE > 0 ? (cat.amount / totalE) * 100 : 0,
+                value: chartTotal > 0 ? (cat.amount / chartTotal) * 100 : 0,
                 color: cat.color,
                 amount: cat.amount,
-                label: `${cat.key} ${totalE > 0 ? Math.round((cat.amount / totalE) * 100) : 0}%`
+                label: `${cat.key} ${chartTotal > 0 ? Math.round((cat.amount / chartTotal) * 100) : 0}%`
             }));
 
             setChartData(data);
         });
 
         return () => unsubscribe();
-    }, [user, currentDate]);
+    }, [user, currentDate, viewPeriod, viewType]);
 
     const changeDate = (num) => {
         const newDate = new Date(currentDate);
-        newDate.setMonth(newDate.getMonth() + num);
+        if (viewPeriod === 'anual') {
+            newDate.setFullYear(newDate.getFullYear() + num);
+        } else {
+            newDate.setMonth(newDate.getMonth() + num);
+        }
         setCurrentDate(newDate);
         setSelectedCategory(null);
     };
@@ -205,7 +225,7 @@ const AnalyticsScreen = () => {
             </View>
             <TouchableOpacity 
                 style={styles.headerSettings} 
-                onPress={() => console.log('Configurações de gráfico')}
+                onPress={() => setIsSettingsVisible(true)}
             >
                 <Ionicons name="options-outline" size={22} color="#000" />
             </TouchableOpacity>
@@ -218,8 +238,12 @@ const AnalyticsScreen = () => {
                 </TouchableOpacity>
                 
                 <View style={styles.dateInfo}>
-                    <Text style={styles.monthDisplay}>{months[currentDate.getMonth()]}</Text>
-                    <Text style={styles.yearDisplay}>{currentDate.getFullYear()}</Text>
+                    {viewPeriod === 'mensal' && (
+                        <Text style={styles.monthDisplay}>{months[currentDate.getMonth()]}</Text>
+                    )}
+                    <Text style={[styles.yearDisplay, viewPeriod === 'anual' && styles.yearDisplayLarge]}>
+                        {currentDate.getFullYear()}
+                    </Text>
                 </View>
 
                 <TouchableOpacity onPress={() => changeDate(1)} style={styles.arrowButton}>
@@ -232,6 +256,8 @@ const AnalyticsScreen = () => {
                     horizontal 
                     pagingEnabled 
                     showsHorizontalScrollIndicator={false}
+                    nestedScrollEnabled={true}
+                    disableIntervalMomentum={true}
                     onScroll={(e) => {
                         const x = e.nativeEvent.contentOffset.x;
                         const page = Math.round(x / SCREEN_WIDTH);
@@ -241,7 +267,13 @@ const AnalyticsScreen = () => {
                 >
                     {/* Page 1: Gráfico de Rosca */}
                     <View style={styles.chartSlide}>
-                        <DonutChart data={chartData} totalAmount={totalExpenses} selectedKey={selectedCategory} formatCurrency={formatCurrency} />
+                        <DonutChart
+                            data={chartData}
+                            totalAmount={viewType === 'renda' ? totalIncome : totalExpenses}
+                            selectedKey={selectedCategory}
+                            formatCurrency={formatCurrency}
+                            centerLabel={viewType === 'renda' ? 'Total renda' : 'Total gastos'}
+                        />
                     </View>
 
                     {/* Page 2: Resumo de Métricas */}
@@ -321,10 +353,73 @@ const AnalyticsScreen = () => {
                         </View>
                     ))
                 ) : (
-                    <Text style={styles.emptyText}>Nenhuma transação neste mês.</Text>
+                    <Text style={styles.emptyText}>Nenhuma transação neste período.</Text>
                 )}
                 </View>
             </ScrollView>
+
+            {/* Modal de Configurações */}
+            <Modal
+                visible={isSettingsVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setIsSettingsVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setIsSettingsVisible(false)}
+                >
+                    <View style={styles.settingsModal}>
+                        <View style={styles.settingsHandle} />
+                        <Text style={styles.settingsTitle}>Configurações do Gráfico</Text>
+
+                        <Text style={styles.settingsLabel}>Período</Text>
+                        <View style={styles.toggleRow}>
+                            {[
+                                { key: 'mensal', label: 'Mensal' },
+                                { key: 'anual', label: 'Anual' },
+                            ].map(opt => (
+                                <TouchableOpacity
+                                    key={opt.key}
+                                    style={[styles.toggleButton, viewPeriod === opt.key && styles.toggleButtonActive]}
+                                    onPress={() => { setViewPeriod(opt.key); setSelectedCategory(null); }}
+                                >
+                                    <Text style={[styles.toggleText, viewPeriod === opt.key && styles.toggleTextActive]}>
+                                        {opt.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <Text style={styles.settingsLabel}>Visualizar</Text>
+                        <View style={styles.toggleRow}>
+                            {[
+                                { key: 'despesas', label: 'Despesas' },
+                                { key: 'renda', label: 'Renda' },
+                                { key: 'ambos', label: 'Ambos' },
+                            ].map(opt => (
+                                <TouchableOpacity
+                                    key={opt.key}
+                                    style={[styles.toggleButton, styles.toggleButtonFlex, viewType === opt.key && styles.toggleButtonActive]}
+                                    onPress={() => { setViewType(opt.key); setSelectedCategory(null); }}
+                                >
+                                    <Text style={[styles.toggleText, viewType === opt.key && styles.toggleTextActive]}>
+                                        {opt.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.settingsClose}
+                            onPress={() => setIsSettingsVisible(false)}
+                        >
+                            <Text style={styles.settingsCloseText}>Fechar</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </View>
     );
 };
@@ -396,11 +491,14 @@ const styles = StyleSheet.create({
     },
     horizontalContainer: {
         width: '100%',
+        height: 290,
         marginVertical: 20,
     },
     chartSlide: {
         width: SCREEN_WIDTH,
+        height: 250,
         alignItems: 'center',
+        justifyContent: 'center',
         paddingVertical: 10,
     },
     statsSlide: {
@@ -565,6 +663,90 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#000',
+    },
+    //config menu
+    yearDisplayLarge: {
+        fontSize: 18,
+        color: '#000',
+        fontFamily: theme.fonts.title,
+        marginTop: 0,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'flex-end',
+    },
+    settingsModal: {
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingHorizontal: 24,
+        paddingTop: 12,
+        paddingBottom: 36,
+    },
+    settingsHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#E5E7EB',
+        alignSelf: 'center',
+        marginBottom: 16,
+    },
+    settingsTitle: {
+        fontFamily: theme.fonts.title,
+        fontSize: 20,
+        color: '#000',
+        marginBottom: 20,
+    },
+    settingsLabel: {
+        fontSize: 13,
+        color: '#6B7280',
+        fontWeight: '600',
+        marginBottom: 10,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    toggleRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 24,
+    },
+    toggleButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1.5,
+        borderColor: 'transparent',
+    },
+    toggleButtonFlex: {
+        flex: 1,
+        alignItems: 'center',
+        paddingHorizontal: 8,
+    },
+    toggleButtonActive: {
+        backgroundColor: '#000',
+        borderColor: '#000',
+    },
+    toggleText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    toggleTextActive: {
+        color: '#FFF',
+    },
+    settingsClose: {
+        backgroundColor: '#F3F4F6',
+        borderRadius: 14,
+        paddingVertical: 14,
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    settingsCloseText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#374151',
     },
 });
 
