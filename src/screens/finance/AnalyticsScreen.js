@@ -7,17 +7,14 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Circle, G } from 'react-native-svg';
 import { auth, db } from '../../services/firebaseConfig';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount, selectedKey }) => {
+const DonutChart = ({ size = 230, strokeWidth = 20, data, totalAmount, selectedKey, formatCurrency }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     let currentOffset = 0;
-
-    const formatCurrency = (value) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    };
 
     const selectedItem = selectedKey ? data.find(d => d.key === selectedKey) : null;
 
@@ -80,6 +77,7 @@ const AnalyticsScreen = () => {
     const user = auth.currentUser;
     const insets = useSafeAreaInsets();
     const navigation = useNavigation();
+    const { formatCurrency } = useCurrency();
     
     const [currentDate, setCurrentDate] = useState(new Date());
     const [transactions, setTransactions] = useState([]);
@@ -181,10 +179,6 @@ const AnalyticsScreen = () => {
         setSelectedCategory(null);
     };
 
-    const formatCurrency = (value) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    };
-
     const renderTransaction = ({ item }) => (
         <View style={styles.transactionItem}>
         <View style={[styles.transactionIconContainer, { backgroundColor: (item.categoryColor || '#000') + '15' }]}>
@@ -247,7 +241,7 @@ const AnalyticsScreen = () => {
                 >
                     {/* Page 1: Gráfico de Rosca */}
                     <View style={styles.chartSlide}>
-                        <DonutChart data={chartData} totalAmount={totalExpenses} selectedKey={selectedCategory} />
+                        <DonutChart data={chartData} totalAmount={totalExpenses} selectedKey={selectedCategory} formatCurrency={formatCurrency} />
                     </View>
 
                     {/* Page 2: Resumo de Métricas */}

@@ -20,6 +20,7 @@ import { theme } from '../../theme/theme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { auth, db } from '../../services/firebaseConfig';
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot, doc, updateDoc, increment, getDocs, deleteDoc } from 'firebase/firestore';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const { width } = Dimensions.get('window');
 
@@ -104,6 +105,7 @@ const AddChallengesScreen = () => {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation();
     const user = auth.currentUser;
+    const { formatCurrency, currencySymbol } = useCurrency();
 
     const [startedChallenges, setStartedChallenges] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -459,10 +461,6 @@ const AddChallengesScreen = () => {
         }
     };
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
-    };
-
     const renderBanner = ({ item }) => (
         <View style={[styles.bannerCard, { backgroundColor: item.color }]}>
             <View style={styles.bannerTextContainer}>
@@ -702,7 +700,7 @@ const AddChallengesScreen = () => {
 
                         <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Meta de valor</Text>
                         <View style={styles.inputWrapper}>
-                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
                             <TextInput
                                 style={styles.amountInput}
                                 placeholder="0,00"
@@ -763,7 +761,7 @@ const AddChallengesScreen = () => {
 
                         <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Valor inicial (semana 1)</Text>
                         <View style={styles.inputWrapper}>
-                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
                             <TextInput
                                 style={styles.amountInput}
                                 placeholder="1,00"
@@ -774,7 +772,7 @@ const AddChallengesScreen = () => {
                             />
                         </View>
                         <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 6, marginBottom: 14 }}>
-                            Cada semana aumenta R$ 1,00. Semana 52 = R$ {(Math.max(1, Math.round(parseFloat(String(weeksStartValue).replace(',', '.')) || 1)) + 51).toFixed(0)}
+                            Cada semana aumenta {formatCurrency(1)}. Semana 52 = {formatCurrency((Math.max(1, Math.round(parseFloat(String(weeksStartValue).replace(',', '.')) || 1)) + 51))}
                         </Text>
 
                         <View style={[styles.modalGoalBox, { backgroundColor: '#F5F3FF', borderRadius: 16 }]}>
@@ -783,7 +781,7 @@ const AddChallengesScreen = () => {
                                 <Text style={{ fontSize: 11, color: '#94A3B8' }}>52 semanas somadas</Text>
                             </View>
                             <Text style={[styles.modalGoalValue, { color: '#8b5cf6', fontSize: 20 }]}>
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(weeks52Goal)}
+                                {formatCurrency(weeks52Goal)}
                             </Text>
                         </View>
 
@@ -823,7 +821,7 @@ const AddChallengesScreen = () => {
 
                         <Text style={styles.emergencyLabel}>Quanto você quer juntar?</Text>
                         <View style={styles.inputWrapper}>
-                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
                             <TextInput
                                 style={styles.amountInput}
                                 placeholder="0,00"
@@ -988,7 +986,7 @@ const AddChallengesScreen = () => {
                             </TouchableOpacity>
                         ) : null}
                         <View style={styles.inputWrapper}>
-                            <Text style={styles.currencyPrefix}>R$</Text>
+                            <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
                             <TextInput
                                 style={styles.amountInput}
                                 placeholder="0,00"
@@ -1245,7 +1243,7 @@ const AddChallengesScreen = () => {
                                                 </TouchableOpacity>
                                             </View>
                                             <View style={styles.inputWrapper}>
-                                                <Text style={styles.currencyPrefix}>R$</Text>
+                                                <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
                                                 <TextInput
                                                     style={styles.amountInput}
                                                     placeholder="0,00"
@@ -1343,7 +1341,7 @@ const AddChallengesScreen = () => {
                                             <>
                                                 <Text style={[styles.emergencyLabel, { marginTop: 18 }]}>Meta de valor</Text>
                                                 <View style={styles.inputWrapper}>
-                                                    <Text style={styles.currencyPrefix}>R$</Text>
+                                                    <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
                                                     <TextInput
                                                         style={styles.amountInput}
                                                         placeholder="0,00"

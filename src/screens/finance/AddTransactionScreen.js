@@ -17,6 +17,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 import { db, auth } from '../../services/firebaseConfig';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, increment } from 'firebase/firestore';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const CATEGORIES = {
     expense: [
@@ -44,6 +45,7 @@ const AddTransactionScreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { type = 'expense' } = route.params || {};
+    const { currencySymbol } = useCurrency();
 
     const [loading, setLoading] = useState(false);
     const [amount, setAmount] = useState('');
@@ -118,7 +120,7 @@ const AddTransactionScreen = () => {
                 <View style={styles.amountSection}>
                     <Text style={styles.label}>Valor</Text>
                     <View style={styles.amountInputRow}>
-                        <Text style={[styles.currency, { color: themeColor }]}>R$</Text>
+                        <Text style={[styles.currency, { color: themeColor }]}>{currencySymbol}</Text>
                         <TextInput
                             style={[styles.amountInput, { color: themeColor }]}
                             placeholder="0,00"

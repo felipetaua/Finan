@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { auth, db } from '../../services/firebaseConfig';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const TransactionsScreen = () => {
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const user = auth.currentUser;
+    const { formatCurrency, currencySymbol } = useCurrency();
     const [searchQuery, setSearchQuery] = useState('');
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -23,10 +25,6 @@ const TransactionsScreen = () => {
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [editAmount, setEditAmount] = useState('');
-
-    const formatCurrency = (value) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    };
 
     const toggleSelection = (id) => {
         setSelectedIds(prev => prev.includes(id) 
@@ -327,7 +325,7 @@ const TransactionsScreen = () => {
                         )}
                         
                         <View style={styles.modalInputGroup}>
-                            <Text style={styles.modalLabel}>Valor (R$)</Text>
+                            <Text style={styles.modalLabel}>Valor ({currencySymbol})</Text>
                             <TextInput
                                 style={styles.modalInput}
                                 value={editAmount}
@@ -475,11 +473,20 @@ const styles = StyleSheet.create({
         marginHorizontal: 15,
         marginVertical: 4,
         borderRadius: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+            },
+            android: {
+                elevation: 1,
+            },
+            web: {
+                boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
+            },
+        }),
         borderWidth: 1.5,
         borderColor: 'transparent',
     },
@@ -546,11 +553,20 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 24,
         padding: 24,
         paddingVertical: 32,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 10,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -10 },
+                shadowOpacity: 0.1,
+                shadowRadius: 10,
+            },
+            android: {
+                elevation: 10,
+            },
+            web: {
+                boxShadow: '0px -10px 10px rgba(0, 0, 0, 0.1)',
+            },
+        }),
     },
     modalIndicator: {
         width: 40,
