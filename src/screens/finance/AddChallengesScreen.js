@@ -105,7 +105,7 @@ const AddChallengesScreen = () => {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation();
     const user = auth.currentUser;
-    const { formatCurrency, currencySymbol } = useCurrency();
+    const { formatCurrency, currencySymbol, currencyCode } = useCurrency();
 
     const [startedChallenges, setStartedChallenges] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -184,6 +184,7 @@ const AddChallengesScreen = () => {
             await addDoc(collection(db, "user_challenges"), {
                 userId: user.uid,
                 templateId: template.id,
+                currencyCode,
                 title: overrides.title !== undefined ? overrides.title : template.title,
                 iconName: template.icon,
                 iconType: template.iconType,
@@ -249,6 +250,7 @@ const AddChallengesScreen = () => {
                     userId: user.uid,
                     type: 'expense',
                     amount: addedValue,
+                    currencyCode,
                     description: challengeTitle,
                     category: 'Desafio',
                     categoryIcon: 'piggy-bank',
@@ -394,6 +396,7 @@ const AddChallengesScreen = () => {
                     userId: user.uid,
                     type: isDeposit ? 'expense' : 'income',
                     amount: value,
+                    currencyCode,
                     description: challengeTitle,
                     category: 'Desafio',
                     categoryIcon: 'piggy-bank',

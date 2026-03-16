@@ -45,7 +45,7 @@ const AddTransactionScreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { type = 'expense' } = route.params || {};
-    const { currencySymbol } = useCurrency();
+    const { currencySymbol, currencyCode } = useCurrency();
 
     const [loading, setLoading] = useState(false);
     const [amount, setAmount] = useState('');
@@ -69,6 +69,7 @@ const AddTransactionScreen = () => {
                 userId: user.uid,
                 type: type, // 'income' ou 'expense'
                 amount: parseFloat(amount.replace(',', '.')),
+                currencyCode,
                 description: description,
                 category: selectedCategory.name,
                 categoryIcon: selectedCategory.icon,
