@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../services/firebaseConfig';
 
 const CURRENCY_STORAGE_KEY = '@finan_currency_code';
 
@@ -19,17 +21,31 @@ export const CurrencyProvider = ({ children }) => {
 
     useEffect(() => {
         const loadCurrency = async () => {
-        try {
-            const stored = await AsyncStorage.getItem(CURRENCY_STORAGE_KEY);
-            if (!stored) return;
+            try {
+                const firebaseUser = auth.currentUser;
+                if (firebaseUser) {
+                    const userRef = doc(db, 'users', firebaseUser.uid);
+                    const userSnap = await getDoc(userRef);
+                    const firebaseCurrency = userSnap.data()?.currencyCode;
+                    const firebaseOption = CURRENCY_OPTIONS.find((item) => item.code === firebaseCurrency);
 
-            const option = CURRENCY_OPTIONS.find((item) => item.code === stored);
-            if (option) {
-            setCurrencyCode(option.code);
+                    if (firebaseOption) {
+                        setCurrencyCode(firebaseOption.code);
+                        await AsyncStorage.setItem(CURRENCY_STORAGE_KEY, firebaseOption.code);
+                        return;
+                    }
+                }
+
+                const stored = await AsyncStorage.getItem(CURRENCY_STORAGE_KEY);
+                if (!stored) return;
+
+                const option = CURRENCY_OPTIONS.find((item) => item.code === stored);
+                if (option) {
+                    setCurrencyCode(option.code);
+                }
+            } catch (error) {
+                console.log('Erro ao carregar moeda:', error);
             }
-        } catch (error) {
-            console.log('Erro ao carregar moeda:', error);
-        }
         };
 
         loadCurrency();
@@ -44,8 +60,17 @@ export const CurrencyProvider = ({ children }) => {
         if (!option) return;
 
         try {
-        await AsyncStorage.setItem(CURRENCY_STORAGE_KEY, option.code);
-        setCurrencyCode(option.code);
+            await AsyncStorage.setItem(CURRENCY_STORAGE_KEY, option.code);
+            setCurrencyCode(option.code);
+
+            const firebaseUser = auth.currentUser;
+            if (firebaseUser) {
+                await setDoc(
+                    doc(db, 'users', firebaseUser.uid),
+                    { currencyCode: option.code },
+                    { merge: true }
+                );
+            }
         } catch (error) {
             console.log('Erro ao salvar moeda:', error);
         }
@@ -69,9 +94,9 @@ export const CurrencyProvider = ({ children }) => {
     };
 
     return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>;
-    };
+};
 
-    export const useCurrency = () => {
+export const useCurrency = () => {
     const context = useContext(CurrencyContext);
     if (!context) {
         throw new Error('useCurrency deve ser usado dentro de CurrencyProvider');
