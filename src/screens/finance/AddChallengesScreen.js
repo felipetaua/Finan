@@ -27,25 +27,101 @@ const { width } = Dimensions.get('window');
 const BANNERS = [
     {
         id: '1',
-        title: 'BANNER DESAFIOS',
-        subtitle: 'Tem dificuldades para guardar dinheiro experimente esses desafios.',
+        title: 'Desafios Financeiros',
+        subtitle: 'Tem dificuldades para guardar dinheiro? Experimente esses desafios.',
         color: '#84C9FB',
         image: require('../../assets/images/banner-fin-1.png'),
+        detail: {
+            heading: 'Por que fazer desafios financeiros?',
+            body: [
+                {
+                    type: 'paragraph',
+                    text: 'Guardar dinheiro é uma das habilidades mais importantes para a saúde financeira, mas manter a consistência é o maior obstáculo para a maioria das pessoas.',
+                },
+                {
+                    type: 'tip',
+                    label: 'Dica',
+                    text: 'Comece pequeno. Qualquer valor salvo hoje é melhor do que zero amanhã.',
+                },
+                {
+                    type: 'paragraph',
+                    text: 'Os desafios transformam a poupança em um jogo: você define uma meta, acompanha o progresso e sente a satisfação de cada conquista. Estudos mostram que metas concretas e acompanhamento visual aumentam em até 3× a taxa de sucesso na poupança.',
+                },
+                {
+                    type: 'section',
+                    title: 'Como escolher seu desafio?',
+                    text: 'Prefira desafios com incrementos graduais se você está começando agora. Já os mais experientes podem apostar em metas maiores como o Desafio Chinês ou o clássico 52 Semanas.',
+                },
+                {
+                    type: 'tip',
+                    label: 'Sabia que?',
+                    text: 'Pessoas que vinculam a poupança a um propósito claro (viagem, emergência, aposentadoria) têm 40% mais chances de completar seus desafios.',
+                },
+            ],
+        },
     },
     {
         id: '2',
-        title: 'NOVIDADE',
+        title: 'Novidades do App',
         subtitle: 'Novos desafios mensais chegando para você!',
         color: '#F87171',
         image: require('../../assets/images/banner-fin-2.png'),
+        detail: {
+            heading: 'O que há de novo?',
+            body: [
+                {
+                    type: 'paragraph',
+                    text: 'Estamos sempre evoluindo para tornar sua experiência financeira mais simples, inteligente e motivadora. Confira as últimas novidades do Finan!',
+                },
+                {
+                    type: 'section',
+                    title: 'Análise Anual de Gastos',
+                    text: 'Agora você pode alternar entre visão mensal e anual nos gráficos de análise, além de filtrar por tipo (Despesas, Renda ou Ambos).',
+                },
+                {
+                    type: 'section',
+                    title: 'Múltiplas Moedas',
+                    text: 'Configure sua moeda preferida (BRL, USD, EUR ou JPY) nas configurações. Todos os valores do app se adaptam automaticamente.',
+                },
+                {
+                    type: 'tip',
+                    label: 'Em breve',
+                    text: 'Metas compartilhadas, relatórios em PDF exportáveis e integração com Open Finance estão nos planos!',
+                },
+            ],
+        },
     },
     {
         id: '3',
-        title: 'DESAFIO CHINES',
-        subtitle: 'Conheça a melhor forma da guardar dinheiro!',
+        title: 'Desafio Chinês',
+        subtitle: 'Conheça a melhor forma de guardar dinheiro!',
         color: '#0EA5E9',
         image: require('../../assets/images/banner-fin-3.png'),
-    }
+        detail: {
+            heading: 'Como funciona o Desafio Chinês?',
+            body: [
+                {
+                    type: 'paragraph',
+                    text: 'O Desafio Chinês é uma metodologia de poupança baseada em envelopes com valores aleatórios. A ideia é simples: você define uma meta total e o app divide esse valor em envelopes surpresa.',
+                },
+                {
+                    type: 'section',
+                    title: 'Por que valores aleatórios?',
+                    text: 'A aleatoriedade remove a pressão de guardar valores fixos e mantém o desafio interessante. Você nunca sabe qual envelope vai encontrar, o que cria um elemento de surpresa e engajamento.',
+                },
+                {
+                    type: 'tip',
+                    label: 'Dica pro',
+                    text: 'Use para metas de curto prazo como viagens ou compras planejadas. A flexibilidade dos valores ajuda a encaixar no orçamento de cada mês.',
+                },
+                {
+                    type: 'section',
+                    title: 'Passo a passo',
+                    text: '1. Defina o valor total que quer juntar.\n2. O app gera automaticamente os envelopes.\n3. Toda vez que puder, "abra" um envelope e deposite o valor.\n4. Acompanhe o progresso até chegar na meta!',
+                },
+            ],
+        },
+    },
 ];
 
 const BANNER_INTERVAL = width - 40 + 15;
@@ -507,7 +583,11 @@ const AddChallengesScreen = () => {
     };
 
     const renderBanner = ({ item }) => (
-        <View style={[styles.bannerCard, { backgroundColor: item.color }]}>
+        <TouchableOpacity
+            style={[styles.bannerCard, { backgroundColor: item.color }]}
+            onPress={() => navigation.navigate('BannerDetail', { banner: item })}
+            activeOpacity={0.88}
+        >
             <View style={styles.bannerTextContainer}>
                 <Text style={styles.bannerTitle}>{item.title}</Text>
                 <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
@@ -523,7 +603,7 @@ const AddChallengesScreen = () => {
                     <MaterialCommunityIcons name={item.icon} size={44} color="#FFF" />
                 </View>
             )}
-        </View>
+        </TouchableOpacity>
     );
 
     const renderCategory = ({ item }) => (
