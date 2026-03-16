@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     View, 
     Text, 
@@ -30,23 +30,29 @@ const BANNERS = [
         title: 'BANNER DESAFIOS',
         subtitle: 'Tem dificuldades para guardar dinheiro experimente esses desafios.',
         color: '#84C9FB',
-        icon: 'trophy',
+        image: require('../../assets/images/banner-fin-1.png'),
     },
     {
         id: '2',
         title: 'NOVIDADE',
         subtitle: 'Novos desafios mensais chegando para você!',
         color: '#F87171',
-        icon: 'star',
+        image: require('../../assets/images/banner-fin-2.png'),
     },
     {
         id: '3',
         title: 'DESAFIO CHINES',
         subtitle: 'Conheça a melhor forma da guardar dinheiro!',
         color: '#0EA5E9',
-        icon: 'medal',
+        image: require('../../assets/images/banner-fin-3.png'),
     }
 ];
+
+const BANNER_INTERVAL = width - 40 + 15;
+const LOOPED_BANNERS = Array.from({ length: 50 }, (_, li) =>
+    BANNERS.map((b, bi) => ({ ...b, _uid: `${li}_${bi}` }))
+).flat();
+const BANNER_MID = 25 * BANNERS.length;
 
 const CHALLENGE_TEMPLATES = [
     {
@@ -115,6 +121,42 @@ const AddChallengesScreen = () => {
     const [selectedChallengeDetail, setSelectedChallengeDetail] = useState(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+
+    const bannerRef = useRef(null);
+    const bannerIndexRef = useRef(BANNER_MID);
+    const intervalRef = useRef(null);
+    const pauseTimerRef = useRef(null);
+
+    const startAutoScroll = () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = setInterval(() => {
+            const next = bannerIndexRef.current + 1;
+            bannerIndexRef.current = next;
+            setActiveBannerIndex(next % BANNERS.length);
+            bannerRef.current?.scrollToOffset({ offset: next * BANNER_INTERVAL, animated: true });
+        }, 3500);
+    };
+
+    const pauseAutoScroll = (resumeAfterMs = 5000) => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+        pauseTimerRef.current = setTimeout(() => startAutoScroll(), resumeAfterMs);
+    };
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            bannerRef.current?.scrollToOffset({ offset: BANNER_MID * BANNER_INTERVAL, animated: false });
+        }, 50);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        startAutoScroll();
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+        };
+    }, []);
     const [amountToAdd, setAmountToAdd] = useState('');
     const [operationType, setOperationType] = useState('add'); // 'add' or 'subtract'
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -470,9 +512,17 @@ const AddChallengesScreen = () => {
                 <Text style={styles.bannerTitle}>{item.title}</Text>
                 <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
             </View>
-            <View style={styles.bannerIconContainer}>
-                <MaterialCommunityIcons name={item.icon} size={60} color="#FFF" />
-            </View>
+            {item.image ? (
+                <Image
+                    source={item.image}
+                    style={styles.bannerImage}
+                    resizeMode="contain"
+                />
+            ) : (
+                <View style={styles.bannerIconContainer}>
+                    <MaterialCommunityIcons name={item.icon} size={44} color="#FFF" />
+                </View>
+            )}
         </View>
     );
 
@@ -554,18 +604,27 @@ const AddChallengesScreen = () => {
                 {/* Horizontal Banner Carousel */}
                 <View style={styles.bannerContainer}>
                     <FlatList
-                        data={BANNERS}
+                        ref={bannerRef}
+                        data={LOOPED_BANNERS}
                         renderItem={renderBanner}
-                        keyExtractor={item => item.id}
+                        keyExtractor={item => item._uid}
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        snapToInterval={width - 40 + 15}
+                        snapToInterval={BANNER_INTERVAL}
                         snapToAlignment="start"
                         decelerationRate="fast"
                         contentContainerStyle={styles.bannerList}
+                        getItemLayout={(_, index) => ({
+                            length: BANNER_INTERVAL,
+                            offset: BANNER_INTERVAL * index,
+                            index,
+                        })}
+                        onTouchStart={() => pauseAutoScroll(5000)}
                         onMomentumScrollEnd={(e) => {
-                            const index = Math.round(e.nativeEvent.contentOffset.x / (width - 40 + 15));
-                            setActiveBannerIndex(index);
+                            const rawIndex = Math.round(e.nativeEvent.contentOffset.x / BANNER_INTERVAL);
+                            bannerIndexRef.current = rawIndex;
+                            setActiveBannerIndex(rawIndex % BANNERS.length);
+                            pauseAutoScroll(4000);
                         }}
                     />
                     <View style={styles.pagination}>
@@ -1480,9 +1539,10 @@ const styles = StyleSheet.create({
     },
     bannerCard: {
         width: width - 40,
-        height: 160,
-        borderRadius: 32,
-        padding: 24,
+        height: 110,
+        borderRadius: 22,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -1492,20 +1552,25 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     bannerTitle: {
-        fontSize: 22,
+        fontSize: 16,
         fontWeight: '900',
         color: '#000',
-        letterSpacing: 2,
-        marginBottom: 8,
+        letterSpacing: 1,
+        marginBottom: 6,
     },
     bannerSubtitle: {
-        fontSize: 14,
+        fontSize: 12,
         color: '#000',
         opacity: 0.8,
         fontWeight: '600',
-        lineHeight: 18,
+        lineHeight: 17,
     },
     bannerIconContainer: {
+        marginLeft: 10,
+    },
+    bannerImage: {
+        width: 90,
+        height: 90,
         marginLeft: 10,
     },
     pagination: {
