@@ -311,10 +311,17 @@ const FinanceScreen = () => {
               </View>
               <Text style={styles.actionButtonLabel}>Transações</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButtonItem} onPress={() => navigation.navigate('Payments')}>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#FFF1F2' }]}>
+                <Ionicons name="calendar-outline" size={22} color="#e23e3e" />
+              </View>
+              <Text style={styles.actionButtonLabel}>Pagamentos</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Desafios Iniciados Section */}
+          {/* Desafios Iniciados Section */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>Desafios Iniciados</Text>
