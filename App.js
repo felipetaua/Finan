@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppNavigation from './src/screens/appNavegation';
 import { OnboardingProvider } from './src/context/OnboardingContext';
+import { CurrencyProvider } from './src/context/CurrencyContext';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -18,9 +19,11 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <OnboardingProvider>
-          <AppNavigation />
-        </OnboardingProvider>
+        <CurrencyProvider>
+          <OnboardingProvider>
+            <AppNavigation />
+          </OnboardingProvider>
+        </CurrencyProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
