@@ -89,8 +89,8 @@ const AnalyticsScreen = () => {
     const [percentageLeft, setPercentageLeft] = useState(0);
     const [activePage, setActivePage] = useState(0);
     const [selectedCategory, setSelectedCategory] = useState(null);
-    const [viewPeriod, setViewPeriod] = useState('mensal'); // 'mensal' | 'anual'
-    const [viewType, setViewType] = useState('despesas'); // 'despesas' | 'renda' | 'ambos'
+    const [viewPeriod, setViewPeriod] = useState('mensal');
+    const [viewType, setViewType] = useState('despesas'); 
     const [isSettingsVisible, setIsSettingsVisible] = useState(false);
 
     const months = [
