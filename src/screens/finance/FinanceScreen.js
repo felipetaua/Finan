@@ -25,6 +25,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-ico
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { auth, db } from '../../services/firebaseConfig';
 import { doc, getDoc, onSnapshot, collection, query, where, orderBy, limit, updateDoc, increment } from 'firebase/firestore';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const AnimatedSparklesButton = () => {
   const rotation = useRef(new Animated.Value(0)).current;
@@ -71,6 +72,7 @@ const FinanceScreen = () => {
   const user = auth.currentUser;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { formatCurrency, currencySymbol } = useCurrency();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -215,11 +217,7 @@ const FinanceScreen = () => {
     };
   }, [user]);
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-  };
-
-  const maskCurrency = (value) => showBalance ? formatCurrency(value) : 'R$ ••••';
+  const maskCurrency = (value) => showBalance ? formatCurrency(value) : `${currencySymbol} ••••`;
 
   const renderTransaction = ({ item }) => (
     <View style={styles.transactionItem}>
@@ -238,7 +236,7 @@ const FinanceScreen = () => {
       </View>
       <View style={styles.transactionAmountContainer}>
         <Text style={[styles.transactionAmount, { color: item.type === 'expense' ? '#FF5252' : '#4CAF50' }]}>
-          {showBalance ? (item.type === 'expense' ? '-' : '+') : ''}{showBalance ? formatCurrency(item.amount) : 'R$ ••••'}
+          {showBalance ? (item.type === 'expense' ? '-' : '+') : ''}{showBalance ? formatCurrency(item.amount) : `${currencySymbol} ••••`}
         </Text>
       </View>
     </View>
@@ -285,7 +283,7 @@ const FinanceScreen = () => {
           <Text style={styles.balanceLabel}>Seu saldo</Text>
           <View style={styles.balanceValueRow}>
             <Text style={styles.balanceValue}>
-              {showBalance ? formatCurrency(totalBalance) : 'R$ ••••••••'}
+              {showBalance ? formatCurrency(totalBalance) : `${currencySymbol} ••••••••`}
             </Text>
             <TouchableOpacity onPress={() => setShowBalance(!showBalance)}>
               <Ionicons name={showBalance ? "eye-outline" : "eye-off-outline"} size={24} color={theme.colors.textSecondary} />
@@ -300,11 +298,20 @@ const FinanceScreen = () => {
               <Text style={styles.actionButtonLabel}>Análises</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButtonItem} onPress={() => setIsBankingModalVisible(true)}>
-              <View style={[styles.actionIconContainer, { backgroundColor: '#F0FDF4' }]}>
-                <MaterialCommunityIcons name="bank-plus" size={22} color="#22c55e" />
+            {userPlan === 'Premium' && (
+              <TouchableOpacity style={styles.actionButtonItem} onPress={() => setIsBankingModalVisible(true)}>
+                <View style={[styles.actionIconContainer, { backgroundColor: '#F0FDF4' }]}>
+                  <MaterialCommunityIcons name="bank-plus" size={22} color="#22c55e" />
+                </View>
+                <Text style={styles.actionButtonLabel}>Open Banking</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.actionButtonItem} onPress={() => navigation.navigate('Payments')}>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#FFF1F2' }]}>
+                <Ionicons name="calendar" size={22} color="#e23e3e" />
               </View>
-              <Text style={styles.actionButtonLabel}>Open Banking</Text>
+              <Text style={styles.actionButtonLabel}>Pagamentos</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButtonItem} onPress={() => navigation.navigate('Transactions')}>
@@ -316,7 +323,7 @@ const FinanceScreen = () => {
           </View>
         </View>
 
-        {/* Desafios Iniciados Section */}
+          {/* Desafios Iniciados Section */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>Desafios Iniciados</Text>
@@ -614,7 +621,7 @@ const FinanceScreen = () => {
                         </View>
 
                         <View style={styles.challengeInputWrapper}>
-                            <Text style={styles.challengeCurrency}>R$</Text>
+                          <Text style={styles.challengeCurrency}>{currencySymbol}</Text>
                             <TextInput
                                 style={styles.challengeInput}
                                 placeholder="0,00"
@@ -1067,11 +1074,20 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+      },
+    }),
     backgroundColor: '#FFF',
     overflow: 'hidden',
   },
