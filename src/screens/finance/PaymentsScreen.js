@@ -1,489 +1,176 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    TextInput,
-    Modal,
-    Alert,
     ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 import { auth, db } from '../../services/firebaseConfig';
-import {
-    collection,
-    addDoc,
-    updateDoc,
-    deleteDoc,
-    doc,
-    query,
-    where,
-    onSnapshot,
-    serverTimestamp,
-} from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { useCurrency } from '../../context/CurrencyContext';
 
-const CATEGORY_OPTIONS = [
-    { id: 'moradia',     label: 'Moradia',       icon: 'home-outline',           color: '#10AC84' },
-    { id: 'energia',     label: 'Energia',        icon: 'flash-outline',          color: '#F7B731' },
-    { id: 'agua',        label: 'Água',           icon: 'water-outline',          color: '#54A0FF' },
-    { id: 'internet',    label: 'Internet',       icon: 'wifi-outline',           color: '#5F27CD' },
-    { id: 'cartao',      label: 'Cartão',         icon: 'card-outline',           color: '#EE5253' },
-    { id: 'saude',       label: 'Saúde',          icon: 'medkit-outline',         color: '#FF6B6B' },
-    { id: 'educacao',    label: 'Educação',       icon: 'school-outline',         color: '#00D2D3' },
-    { id: 'transporte',  label: 'Transporte',     icon: 'car-outline',            color: '#2E86DE' },
-    { id: 'streaming',   label: 'Streaming',      icon: 'play-circle-outline',    color: '#E84393' },
-    { id: 'outros',      label: 'Outros',         icon: 'ellipsis-horizontal-outline', color: '#8395a7' },
+const FILTERS = [
+    { key: 'all', label: 'Todas' },
+    { key: 'pending', label: 'Pendentes' },
+    { key: 'paid', label: 'Pagas' },
 ];
-
-const STATUS_CONFIG = {
-    pending:   { label: 'Pendente',   color: '#F7B731', bg: '#FFF9E6', icon: 'time-outline' },
-    overdue:   { label: 'Atrasado',   color: '#EE5253', bg: '#FFF0F0', icon: 'alert-circle-outline' },
-    paid:      { label: 'Pago',       color: '#10AC84', bg: '#F0FFF8', icon: 'checkmark-circle-outline' },
-};
-
-const today = () => new Date();
-
-const dueDateStatus = (dueDateStr) => {
-    if (!dueDateStr) return 'pending';
-    const [day, month, year] = dueDateStr.split('/').map(Number);
-    const due = new Date(year, month - 1, day);
-    const now = today();
-    now.setHours(0, 0, 0, 0);
-    if (due < now) return 'overdue';
-    return 'pending';
-};
-
-const formatDueDate = (str) => str || '—';
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-const buildPayment = (fields, userId, currencyCode) => ({
-    userId,
-    currencyCode,
-    name: fields.name.trim(),
-    amount: parseFloat(fields.amount.replace(',', '.')) || 0,
-    dueDate: fields.dueDate.trim(),
-    categoryId: fields.categoryId,
-    notes: fields.notes.trim(),
-    paid: false,
-    createdAt: serverTimestamp(),
-});
-
-const emptyFields = () => ({
-    name: '',
-    amount: '',
-    dueDate: '',
-    categoryId: 'outros',
-    notes: '',
-});
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 const PaymentsScreen = () => {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation();
     const user = auth.currentUser;
-    const { formatCurrency, currencySymbol, currencyCode } = useCurrency();
+    const { formatCurrency } = useCurrency();
 
-    const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all'); // 'all' | 'pending' | 'overdue' | 'paid'
-
-    // modal add/edit
-    const [isModalVisible, setIsModalVisible] = useState(false);
-    const [editingId, setEditingId] = useState(null);
-    const [fields, setFields] = useState(emptyFields());
-    const [saving, setSaving] = useState(false);
-
-    // ── Firestore listener ────────────────────────────────────────────────────
+    const [filter, setFilter] = useState('all');
+    const [items, setItems] = useState([]);
 
     useEffect(() => {
         if (!user) return;
-        const q = query(collection(db, 'payments'), where('userId', '==', user.uid));
-        const unsub = onSnapshot(q, (snap) => {
-            const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-            // sort: overdue first, then upcoming by dueDate
-            docs.sort((a, b) => {
-                if (a.paid !== b.paid) return a.paid ? 1 : -1;
-                return (a.dueDate || '').localeCompare(b.dueDate || '');
-            });
-            setPayments(docs);
-            setLoading(false);
-        });
+
+        const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+        const unsub = onSnapshot(
+            q,
+            (snapshot) => {
+                const remindedExpenses = snapshot.docs
+                    .map((d) => ({ id: d.id, ...d.data() }))
+                    .filter((item) => item.type === 'expense' && item.paymentReminder === true)
+                    .sort((a, b) => {
+                        if (!!a.paymentPaid !== !!b.paymentPaid) return a.paymentPaid ? 1 : -1;
+                        return (b.date?.seconds || 0) - (a.date?.seconds || 0);
+                    });
+
+                setItems(remindedExpenses);
+                setLoading(false);
+            },
+            () => setLoading(false)
+        );
+
         return unsub;
     }, [user]);
 
-    // ── derived list ─────────────────────────────────────────────────────────
+    const visibleItems = useMemo(() => {
+        if (filter === 'all') return items;
+        if (filter === 'paid') return items.filter((item) => !!item.paymentPaid);
+        return items.filter((item) => !item.paymentPaid);
+    }, [items, filter]);
 
-    const displayList = payments.filter((p) => {
-        if (filter === 'all') return true;
-        if (filter === 'paid') return p.paid;
-        const st = p.paid ? 'paid' : dueDateStatus(p.dueDate);
-        return st === filter;
-    });
+    const totalPending = useMemo(() => {
+        return items
+            .filter((item) => !item.paymentPaid)
+            .reduce((acc, item) => acc + (item.amount || 0), 0);
+    }, [items]);
 
-    // ── summary ──────────────────────────────────────────────────────────────
-
-    const totalPending = payments
-        .filter((p) => !p.paid)
-        .reduce((acc, p) => acc + (p.amount || 0), 0);
-    const countOverdue = payments.filter(
-        (p) => !p.paid && dueDateStatus(p.dueDate) === 'overdue'
-    ).length;
-
-    // ── actions ──────────────────────────────────────────────────────────────
-
-    const openAdd = () => {
-        setEditingId(null);
-        setFields(emptyFields());
-        setIsModalVisible(true);
-    };
-
-    const openEdit = (item) => {
-        setEditingId(item.id);
-        setFields({
-            name: item.name || '',
-            amount: item.amount != null ? String(item.amount).replace('.', ',') : '',
-            dueDate: item.dueDate || '',
-            categoryId: item.categoryId || 'outros',
-            notes: item.notes || '',
-        });
-        setIsModalVisible(true);
-    };
-
-    const handleSave = async () => {
-        if (!fields.name.trim() || !fields.amount) {
-            Alert.alert('Ops!', 'Preencha pelo menos o nome e o valor.');
-            return;
-        }
-        setSaving(true);
-        try {
-            if (editingId) {
-                await updateDoc(doc(db, 'payments', editingId), {
-                    name: fields.name.trim(),
-                    amount: parseFloat(fields.amount.replace(',', '.')) || 0,
-                    dueDate: fields.dueDate.trim(),
-                    categoryId: fields.categoryId,
-                    notes: fields.notes.trim(),
-                    currencyCode,
-                });
-            } else {
-                await addDoc(collection(db, 'payments'), buildPayment(fields, user.uid, currencyCode));
-            }
-            setIsModalVisible(false);
-        } catch (e) {
-            console.error(e);
-            Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
-        } finally {
-            setSaving(false);
-        }
-    };
+    const countPaid = useMemo(() => items.filter((item) => !!item.paymentPaid).length, [items]);
 
     const togglePaid = async (item) => {
-        await updateDoc(doc(db, 'payments', item.id), { paid: !item.paid });
+        try {
+            await updateDoc(doc(db, 'transactions', item.id), {
+                paymentPaid: !item.paymentPaid,
+            });
+        } catch (error) {
+            Alert.alert('Erro', 'Nao foi possivel atualizar o pagamento.');
+        }
     };
 
-    const handleDelete = (item) => {
-        Alert.alert(
-            'Excluir cobrança',
-            `Deseja excluir "${item.name}"?`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Excluir',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await deleteDoc(doc(db, 'payments', item.id));
-                    },
-                },
-            ]
-        );
+    const formatDate = (timestamp) => {
+        if (!timestamp?.seconds) return '-';
+        return new Date(timestamp.seconds * 1000).toLocaleDateString('pt-BR');
     };
-
-    // ── render helpers ────────────────────────────────────────────────────────
-
-    const categoryOf = (id) =>
-        CATEGORY_OPTIONS.find((c) => c.id === id) || CATEGORY_OPTIONS[CATEGORY_OPTIONS.length - 1];
-
-    const renderItem = (item) => {
-        const cat = categoryOf(item.categoryId);
-        const status = item.paid ? 'paid' : dueDateStatus(item.dueDate);
-        const st = STATUS_CONFIG[status];
-
-        return (
-            <TouchableOpacity
-                key={item.id}
-                style={styles.card}
-                activeOpacity={0.8}
-                onPress={() => openEdit(item)}
-            >
-                {/* left icon */}
-                <View style={[styles.cardIcon, { backgroundColor: cat.color + '18' }]}>
-                    <Ionicons name={cat.icon} size={22} color={cat.color} />
-                </View>
-
-                {/* content */}
-                <View style={styles.cardContent}>
-                    <View style={styles.cardRow}>
-                        <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-                        <Text style={[styles.cardAmount, item.paid && styles.cardAmountPaid]}>
-                            {formatCurrency(item.amount || 0)}
-                        </Text>
-                    </View>
-                    <View style={styles.cardRow}>
-                        <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
-                            <Ionicons name={st.icon} size={11} color={st.color} />
-                            <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
-                        </View>
-                        {item.dueDate ? (
-                            <Text style={styles.cardDate}>Venc. {formatDueDate(item.dueDate)}</Text>
-                        ) : null}
-                    </View>
-                    {item.notes ? (
-                        <Text style={styles.cardNotes} numberOfLines={1}>{item.notes}</Text>
-                    ) : null}
-                </View>
-
-                {/* paid toggle */}
-                <TouchableOpacity
-                    style={[styles.checkBtn, item.paid && styles.checkBtnActive]}
-                    onPress={() => togglePaid(item)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                    <Ionicons
-                        name={item.paid ? 'checkmark' : 'checkmark-outline'}
-                        size={18}
-                        color={item.paid ? '#FFF' : '#CBD5E1'}
-                    />
-                </TouchableOpacity>
-
-                {/* delete */}
-                <TouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => handleDelete(item)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                    <Ionicons name="trash-outline" size={16} color="#EE5253" />
-                </TouchableOpacity>
-            </TouchableOpacity>
-        );
-    };
-
-    // ── JSX ───────────────────────────────────────────────────────────────────
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
-            {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <TouchableOpacity onPress={() => navigation.goBack()} >
                     <Ionicons name="chevron-back" size={24} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Contas a Pagar</Text>
-                <TouchableOpacity style={styles.addButton} onPress={openAdd}>
-                    <Ionicons name="add" size={26} color="#000" />
+                <Text style={styles.title}>Pagamentos</Text>
+                <TouchableOpacity onPress={() => {}} style={styles.backButton} >
+                    <Ionicons name="accessibility-outline" size={24} color="#000" />
                 </TouchableOpacity>
             </View>
 
-            {/* Summary cards */}
             <View style={styles.summaryRow}>
                 <View style={styles.summaryCard}>
                     <Text style={styles.summaryLabel}>Total pendente</Text>
-                    <Text style={[styles.summaryValue, { color: '#EE5253' }]}>
-                        {formatCurrency(totalPending)}
-                    </Text>
+                    <Text style={[styles.summaryValue, { color: '#EE5253' }]}>{formatCurrency(totalPending)}</Text>
                 </View>
-                <View style={[styles.summaryCard, { backgroundColor: countOverdue > 0 ? '#FFF0F0' : '#F9FAFB' }]}>
-                    <Text style={styles.summaryLabel}>Atrasadas</Text>
-                    <Text style={[styles.summaryValue, { color: countOverdue > 0 ? '#EE5253' : '#9CA3AF' }]}>
-                        {countOverdue}
-                    </Text>
+                <View style={styles.summaryCard}>
+                    <Text style={styles.summaryLabel}>Ja pagas</Text>
+                    <Text style={[styles.summaryValue, { color: '#10AC84' }]}>{countPaid}</Text>
                 </View>
             </View>
 
-            {/* Filter tabs */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterRow}
-            >
-                {[
-                    { key: 'all',     label: 'Todas' },
-                    { key: 'overdue', label: 'Atrasadas' },
-                    { key: 'pending', label: 'Pendentes' },
-                    { key: 'paid',    label: 'Pagas' },
-                ].map((f) => (
+            <View style={styles.filterRow}>
+                {FILTERS.map((f) => (
                     <TouchableOpacity
                         key={f.key}
                         style={[styles.filterTab, filter === f.key && styles.filterTabActive]}
                         onPress={() => setFilter(f.key)}
                     >
-                        <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                            {f.label}
-                        </Text>
+                        <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>{f.label}</Text>
                     </TouchableOpacity>
                 ))}
-            </ScrollView>
+            </View>
 
-            {/* List */}
             {loading ? (
                 <ActivityIndicator style={{ marginTop: 40 }} color="#000" />
             ) : (
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.listContent}
-                >
-                    {displayList.length === 0 ? (
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
+                    {visibleItems.length === 0 ? (
                         <View style={styles.emptyState}>
-                            <Ionicons name="checkmark-done-circle-outline" size={52} color="#E5E7EB" />
-                            <Text style={styles.emptyText}>Nenhuma conta aqui.</Text>
-                            <TouchableOpacity style={styles.emptyAddBtn} onPress={openAdd}>
-                                <Text style={styles.emptyAddText}>Adicionar conta</Text>
-                            </TouchableOpacity>
+                            <Ionicons name="notifications-off-outline" size={52} color="#E5E7EB" />
+                            <Text style={styles.emptyText}>Nenhum lembrete de pagamento.</Text>
+                            <Text style={styles.emptyHint}>Ao criar uma despesa, marque "Lembrar pagamento".</Text>
                         </View>
                     ) : (
-                        displayList.map(renderItem)
+                        visibleItems.map((item) => (
+                            <View key={item.id} style={styles.card}>
+                                <View style={[styles.cardIcon, { backgroundColor: (item.categoryColor || '#CBD5E1') + '20' }]}>
+                                    <MaterialCommunityIcons
+                                        name={item.categoryIcon || 'cash'}
+                                        size={22}
+                                        color={item.categoryColor || '#64748B'}
+                                    />
+                                </View>
+
+                                <View style={styles.cardContent}>
+                                    <View style={styles.cardRow}>
+                                        <Text style={styles.cardName} numberOfLines={1}>{item.description || 'Despesa'}</Text>
+                                        <Text style={[styles.cardAmount, item.paymentPaid && styles.cardAmountPaid]}>
+                                            {formatCurrency(item.amount || 0)}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.cardMeta}>
+                                        {item.category || 'Categoria'} • {formatDate(item.date)}
+                                    </Text>
+                                </View>
+
+                                <TouchableOpacity
+                                    style={[styles.checkBtn, item.paymentPaid && styles.checkBtnActive]}
+                                    onPress={() => togglePaid(item)}
+                                >
+                                    <Ionicons
+                                        name={item.paymentPaid ? 'checkmark' : 'checkmark-outline'}
+                                        size={18}
+                                        color={item.paymentPaid ? '#FFF' : '#CBD5E1'}
+                                    />
+                                </TouchableOpacity>
+                            </View>
+                        ))
                     )}
                 </ScrollView>
             )}
-
-            {/* Add/Edit Modal */}
-            <Modal
-                visible={isModalVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setIsModalVisible(false)}
-            >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setIsModalVisible(false)}
-                >
-                    <View style={styles.modalSheet}>
-                        {/* drag handle */}
-                        <View style={styles.modalHandle} />
-
-                        <Text style={styles.modalTitle}>
-                            {editingId ? 'Editar conta' : 'Nova conta'}
-                        </Text>
-
-                        {/* Name */}
-                        <Text style={styles.fieldLabel}>Nome</Text>
-                        <TextInput
-                            style={styles.fieldInput}
-                            placeholder="Ex: Conta de luz"
-                            placeholderTextColor="#CBD5E1"
-                            value={fields.name}
-                            onChangeText={(v) => setFields({ ...fields, name: v })}
-                        />
-
-                        {/* Amount */}
-                        <Text style={styles.fieldLabel}>Valor</Text>
-                        <View style={styles.amountRow}>
-                            <Text style={styles.currencyPrefix}>{currencySymbol}</Text>
-                            <TextInput
-                                style={[styles.fieldInput, { flex: 1, marginBottom: 0 }]}
-                                placeholder="0,00"
-                                placeholderTextColor="#CBD5E1"
-                                keyboardType="numeric"
-                                value={fields.amount}
-                                onChangeText={(v) => setFields({ ...fields, amount: v })}
-                            />
-                        </View>
-
-                        {/* Due date */}
-                        <Text style={[styles.fieldLabel, { marginTop: 16 }]}>
-                            Vencimento (DD/MM/AAAA)
-                        </Text>
-                        <TextInput
-                            style={styles.fieldInput}
-                            placeholder="Ex: 25/04/2026"
-                            placeholderTextColor="#CBD5E1"
-                            keyboardType="numeric"
-                            value={fields.dueDate}
-                            onChangeText={(v) => {
-                                // auto-format while typing
-                                let raw = v.replace(/\D/g, '').slice(0, 8);
-                                if (raw.length > 4) raw = raw.slice(0, 2) + '/' + raw.slice(2, 4) + '/' + raw.slice(4);
-                                else if (raw.length > 2) raw = raw.slice(0, 2) + '/' + raw.slice(2);
-                                setFields({ ...fields, dueDate: raw });
-                            }}
-                        />
-
-                        {/* Category */}
-                        <Text style={styles.fieldLabel}>Categoria</Text>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.categoryRow}
-                        >
-                            {CATEGORY_OPTIONS.map((cat) => (
-                                <TouchableOpacity
-                                    key={cat.id}
-                                    style={[
-                                        styles.catChip,
-                                        fields.categoryId === cat.id && {
-                                            backgroundColor: cat.color,
-                                            borderColor: cat.color,
-                                        },
-                                    ]}
-                                    onPress={() => setFields({ ...fields, categoryId: cat.id })}
-                                >
-                                    <Ionicons
-                                        name={cat.icon}
-                                        size={14}
-                                        color={fields.categoryId === cat.id ? '#FFF' : cat.color}
-                                    />
-                                    <Text
-                                        style={[
-                                            styles.catChipText,
-                                            fields.categoryId === cat.id && { color: '#FFF' },
-                                        ]}
-                                    >
-                                        {cat.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-
-                        {/* Notes */}
-                        <Text style={styles.fieldLabel}>Observação (opcional)</Text>
-                        <TextInput
-                            style={[styles.fieldInput, { height: 70, textAlignVertical: 'top' }]}
-                            placeholder="Ex: Boleto no email"
-                            placeholderTextColor="#CBD5E1"
-                            multiline
-                            value={fields.notes}
-                            onChangeText={(v) => setFields({ ...fields, notes: v })}
-                        />
-
-                        {/* Save */}
-                        <TouchableOpacity
-                            style={styles.saveBtn}
-                            onPress={handleSave}
-                            disabled={saving}
-                        >
-                            {saving ? (
-                                <ActivityIndicator color="#FFF" />
-                            ) : (
-                                <Text style={styles.saveBtnText}>
-                                    {editingId ? 'Salvar alterações' : 'Adicionar conta'}
-                                </Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
         </View>
     );
 };
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
     container: {
@@ -500,7 +187,7 @@ const styles = StyleSheet.create({
     backButton: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: 12,
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
@@ -509,14 +196,6 @@ const styles = StyleSheet.create({
         fontFamily: theme.fonts.title,
         fontSize: 22,
         color: '#0F172A',
-    },
-    addButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6',
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     summaryRow: {
         flexDirection: 'row',
@@ -541,12 +220,16 @@ const styles = StyleSheet.create({
         color: '#0F172A',
     },
     filterRow: {
+        flexDirection: 'row',
         paddingHorizontal: 16,
         gap: 8,
         paddingBottom: 12,
     },
     filterTab: {
-        paddingHorizontal: 16,
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 20,
         backgroundColor: '#F3F4F6',
@@ -606,26 +289,9 @@ const styles = StyleSheet.create({
     cardAmountPaid: {
         color: '#10AC84',
     },
-    statusBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 8,
-    },
-    statusText: {
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    cardDate: {
-        fontSize: 11,
-        color: '#9CA3AF',
-    },
-    cardNotes: {
-        fontSize: 11,
+    cardMeta: {
+        fontSize: 12,
         color: '#94A3B8',
-        marginTop: 2,
     },
     checkBtn: {
         width: 32,
@@ -638,126 +304,18 @@ const styles = StyleSheet.create({
     checkBtnActive: {
         backgroundColor: '#10AC84',
     },
-    deleteBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#FEF2F2',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     emptyState: {
         alignItems: 'center',
         marginTop: 60,
-        gap: 12,
+        gap: 8,
     },
     emptyText: {
         fontSize: 15,
         color: '#9CA3AF',
     },
-    emptyAddBtn: {
-        backgroundColor: '#0F172A',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 14,
-        marginTop: 4,
-    },
-    emptyAddText: {
-        color: '#FFF',
-        fontWeight: '700',
-        fontSize: 14,
-    },
-    // modal
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        justifyContent: 'flex-end',
-    },
-    modalSheet: {
-        backgroundColor: '#FFF',
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        paddingHorizontal: 24,
-        paddingTop: 12,
-        paddingBottom: 40,
-    },
-    modalHandle: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#E5E7EB',
-        alignSelf: 'center',
-        marginBottom: 18,
-    },
-    modalTitle: {
-        fontFamily: theme.fonts.title,
-        fontSize: 20,
-        color: '#0F172A',
-        marginBottom: 20,
-    },
-    fieldLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#6B7280',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 6,
-    },
-    fieldInput: {
-        backgroundColor: '#F3F4F6',
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        fontSize: 15,
-        color: '#0F172A',
-        marginBottom: 16,
-    },
-    amountRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F3F4F6',
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        marginBottom: 16,
-    },
-    currencyPrefix: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#374151',
-        marginRight: 6,
-    },
-    categoryRow: {
-        gap: 8,
-        marginBottom: 16,
-        paddingVertical: 2,
-    },
-    catChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
-        paddingHorizontal: 12,
-        paddingVertical: 7,
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6',
-        borderWidth: 1.5,
-        borderColor: 'transparent',
-    },
-    catChipText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#374151',
-    },
-    saveBtn: {
-        backgroundColor: '#0F172A',
-        borderRadius: 16,
-        paddingVertical: 15,
-        alignItems: 'center',
-        marginTop: 6,
-    },
-    saveBtnText: {
-        color: '#FFF',
-        fontSize: 15,
-        fontWeight: '700',
+    emptyHint: {
+        fontSize: 13,
+        color: '#94A3B8',
     },
 });
 
