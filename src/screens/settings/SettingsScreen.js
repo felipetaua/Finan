@@ -1,12 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 import { auth } from '../../services/firebaseConfig';
 import { signOut } from 'firebase/auth';
+import { CURRENCY_OPTIONS, useCurrency } from '../../context/CurrencyContext';
 
 const SettingsScreen = ({ navigation }) => {
+    const { selectedCurrency, setCurrency } = useCurrency();
+    const [isCurrencyModalVisible, setIsCurrencyModalVisible] = React.useState(false);
+
+    const handleCurrencyChange = () => {
+        setIsCurrencyModalVisible(true);
+    };
+
+    const handleSelectCurrency = async (code) => {
+        await setCurrency(code);
+        setIsCurrencyModalVisible(false);
+    };
+
     const handleLogout = () => {
         Alert.alert(
             "Sair do App",
@@ -71,8 +84,8 @@ const SettingsScreen = ({ navigation }) => {
                         isMaterial
                         icon="swap-horizontal" 
                         label="Moeda" 
-                        value="BRL (R$)"
-                        onPress={() => {}} 
+                        value={selectedCurrency.label}
+                        onPress={handleCurrencyChange} 
                         color="#49d327"
                     />
                     <SettingItem 
@@ -124,6 +137,48 @@ const SettingsScreen = ({ navigation }) => {
                     <Text style={styles.version}>Finan App v1.0.0</Text>
                 </View>
             </ScrollView>
+
+            <Modal
+                visible={isCurrencyModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIsCurrencyModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={styles.modalDismissArea}
+                        activeOpacity={1}
+                        onPress={() => setIsCurrencyModalVisible(false)}
+                    />
+                    <View style={styles.modalCard}>
+                        <Text style={styles.modalTitle}>Selecionar moeda</Text>
+                        <Text style={styles.modalSubtitle}>Escolha a moeda para exibir valores no app.</Text>
+
+                        {CURRENCY_OPTIONS.map((option) => {
+                            const isActive = selectedCurrency.code === option.code;
+                            return (
+                                <TouchableOpacity
+                                    key={option.code}
+                                    style={[styles.currencyOption, isActive && styles.currencyOptionActive]}
+                                    onPress={() => handleSelectCurrency(option.code)}
+                                >
+                                    <Text style={[styles.currencyOptionText, isActive && styles.currencyOptionTextActive]}>
+                                        {option.label}
+                                    </Text>
+                                    {isActive && <Ionicons name="checkmark" size={18} color={theme.colors.primary} />}
+                                </TouchableOpacity>
+                            );
+                        })}
+
+                        <TouchableOpacity
+                            style={styles.modalCancelButton}
+                            onPress={() => setIsCurrencyModalVisible(false)}
+                        >
+                            <Text style={styles.modalCancelText}>Fechar</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -223,7 +278,74 @@ const styles = StyleSheet.create({
     version: {
         color: '#CCC',
         fontSize: 12,
-    }
+    },
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        paddingHorizontal: 20,
+    },
+    modalDismissArea: {
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+    },
+    modalCard: {
+        width: '100%',
+        maxWidth: 360,
+        borderRadius: 20,
+        backgroundColor: '#FFF',
+        padding: 20,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    modalSubtitle: {
+        fontSize: 13,
+        color: '#6B7280',
+        marginBottom: 16,
+    },
+    currencyOption: {
+        height: 46,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        paddingHorizontal: 14,
+        marginBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#FFF',
+    },
+    currencyOptionActive: {
+        borderColor: theme.colors.primary,
+        backgroundColor: '#EEF6FF',
+    },
+    currencyOptionText: {
+        fontSize: 15,
+        color: '#111827',
+        fontWeight: '600',
+    },
+    currencyOptionTextActive: {
+        color: theme.colors.primary,
+    },
+    modalCancelButton: {
+        marginTop: 4,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalCancelText: {
+        color: '#111827',
+        fontSize: 14,
+        fontWeight: '700',
+    },
 });
 
 export default SettingsScreen;
