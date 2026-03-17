@@ -52,6 +52,7 @@ const AddTransactionScreen = () => {
     const [description, setDescription] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [isFixed, setIsFixed] = useState(false);
+    const [paymentReminder, setPaymentReminder] = useState(false);
     const [details, setDetails] = useState('');
 
     const handleSave = async () => {
@@ -75,6 +76,8 @@ const AddTransactionScreen = () => {
                 categoryIcon: selectedCategory.icon,
                 categoryColor: selectedCategory.color,
                 isFixed: isFixed,
+                paymentReminder: type === 'expense' ? paymentReminder : false,
+                paymentPaid: type === 'expense' ? false : null,
                 details: details,
                 date: serverTimestamp(),
                 createdAt: serverTimestamp(),
@@ -178,6 +181,20 @@ const AddTransactionScreen = () => {
                         trackColor={{ false: '#767577', true: themeColor }}
                     />
                 </View>
+
+                {type === 'expense' && (
+                    <View style={styles.toggleRow}>
+                        <View>
+                            <Text style={styles.toggleTitle}>Lembrar pagamento?</Text>
+                            <Text style={styles.toggleSubtitle}>Mostra esta despesa na tela de pagamentos</Text>
+                        </View>
+                        <Switch
+                            value={paymentReminder}
+                            onValueChange={setPaymentReminder}
+                            trackColor={{ false: '#767577', true: themeColor }}
+                        />
+                    </View>
+                )}
 
                 {/* More Details */}
                 <View style={styles.inputSection}>
