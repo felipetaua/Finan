@@ -307,18 +307,18 @@ const FinanceScreen = () => {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={styles.actionButtonItem} onPress={() => navigation.navigate('Transactions')}>
-              <View style={[styles.actionIconContainer, { backgroundColor: '#FAF5FF' }]}>
-                <Ionicons name="receipt" size={22} color="#a855f7" />
-              </View>
-              <Text style={styles.actionButtonLabel}>Transações</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.actionButtonItem} onPress={() => navigation.navigate('Payments')}>
               <View style={[styles.actionIconContainer, { backgroundColor: '#FFF1F2' }]}>
                 <Ionicons name="calendar" size={22} color="#e23e3e" />
               </View>
               <Text style={styles.actionButtonLabel}>Pagamentos</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButtonItem} onPress={() => navigation.navigate('Transactions')}>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#FAF5FF' }]}>
+                <Ionicons name="receipt" size={22} color="#a855f7" />
+              </View>
+              <Text style={styles.actionButtonLabel}>Transações</Text>
             </TouchableOpacity>
           </View>
         </View>
