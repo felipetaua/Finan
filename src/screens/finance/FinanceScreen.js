@@ -298,12 +298,14 @@ const FinanceScreen = () => {
               <Text style={styles.actionButtonLabel}>Análises</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButtonItem} onPress={() => setIsBankingModalVisible(true)}>
-              <View style={[styles.actionIconContainer, { backgroundColor: '#F0FDF4' }]}>
-                <MaterialCommunityIcons name="bank-plus" size={22} color="#22c55e" />
-              </View>
-              <Text style={styles.actionButtonLabel}>Open Banking</Text>
-            </TouchableOpacity>
+            {userPlan === 'Premium' && (
+              <TouchableOpacity style={styles.actionButtonItem} onPress={() => setIsBankingModalVisible(true)}>
+                <View style={[styles.actionIconContainer, { backgroundColor: '#F0FDF4' }]}>
+                  <MaterialCommunityIcons name="bank-plus" size={22} color="#22c55e" />
+                </View>
+                <Text style={styles.actionButtonLabel}>Open Banking</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity style={styles.actionButtonItem} onPress={() => navigation.navigate('Transactions')}>
               <View style={[styles.actionIconContainer, { backgroundColor: '#FAF5FF' }]}>
