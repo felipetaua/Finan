@@ -316,7 +316,7 @@ const FinanceScreen = () => {
 
             <TouchableOpacity style={styles.actionButtonItem} onPress={() => navigation.navigate('Payments')}>
               <View style={[styles.actionIconContainer, { backgroundColor: '#FFF1F2' }]}>
-                <Ionicons name="calendar-outline" size={22} color="#e23e3e" />
+                <Ionicons name="calendar" size={22} color="#e23e3e" />
               </View>
               <Text style={styles.actionButtonLabel}>Pagamentos</Text>
             </TouchableOpacity>
