@@ -45,6 +45,7 @@ const PaymentsScreen = () => {
             (snapshot) => {
                 const remindedExpenses = snapshot.docs
                     .map((d) => ({ id: d.id, ...d.data() }))
+                    .filter((item) => !(item?.isDeleted === true || item?.isDeleted === 'true' || item?.deletedAt != null))
                     .filter((item) => item.type === 'expense' && item.paymentReminder === true)
                     .sort((a, b) => {
                         if (!!a.paymentPaid !== !!b.paymentPaid) return a.paymentPaid ? 1 : -1;
