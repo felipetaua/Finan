@@ -29,6 +29,10 @@ const TransactionsScreen = () => {
     const [deleteTarget, setDeleteTarget] = useState({ type: null, ids: [] });
     const [isDeleting, setIsDeleting] = useState(false);
 
+    const isTransactionDeleted = (item) => {
+        return item?.isDeleted === true || item?.isDeleted === 'true' || item?.deletedAt != null;
+    };
+
     const toggleSelection = (id) => {
         setSelectedIds(prev => prev.includes(id) 
             ? prev.filter(i => i !== id) 
@@ -87,12 +91,23 @@ const TransactionsScreen = () => {
 
         try {
             setIsDeleting(true);
-            setLoading(true);
             await Promise.all(deleteTarget.ids.map((id) => deleteTransactionById(id)));
+
+            // Remove localmente para feedback imediato, sem esperar snapshot.
+            setTransactions((prevSections) =>
+                prevSections
+                    .map((section) => ({
+                        ...section,
+                        data: section.data.filter((item) => !deleteTarget.ids.includes(item.id)),
+                    }))
+                    .filter((section) => section.data.length > 0)
+            );
 
             if (deleteTarget.type === 'bulk') {
                 setSelectedIds([]);
                 setIsSelectionMode(false);
+            } else if (selectedTransaction && deleteTarget.ids.includes(selectedTransaction.id)) {
+                setSelectedTransaction(null);
             }
 
             setEditModalVisible(false);
@@ -103,7 +118,6 @@ const TransactionsScreen = () => {
             Alert.alert('Erro', `Não foi possível excluir. ${error?.message || ''}`.trim());
         } finally {
             setIsDeleting(false);
-            setLoading(false);
         }
     };
 
@@ -119,7 +133,7 @@ const TransactionsScreen = () => {
             let transList = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
-            })).filter(item => !item.isDeleted);
+            })).filter(item => !isTransactionDeleted(item));
 
             // Group by date
             const grouped = transList.reduce((acc, obj) => {
