@@ -35,6 +35,9 @@ const RankingsScreen = ({ navigation }) => {
     const topThree = users.slice(0, 3);
     const remainingUsers = users.slice(3);
 
+    const currentUserIndex = users.findIndex(u => u.id === auth.currentUser?.uid);
+    const currentUserRankDisplay = currentUserIndex >= 0 ? `#${currentUserIndex + 1}` : '-';
+
     const renderTopUser = (user, rank) => {
         if (!user) return <View style={styles.topUserPlaceholder} />;
 
@@ -90,11 +93,13 @@ const RankingsScreen = ({ navigation }) => {
     return (
         <View style={[styles.safeArea, { paddingTop: insets.top }]}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
-                </TouchableOpacity>
+                <View style={styles.headerRankContainer}>
+                    <Text style={styles.headerRankText}>{currentUserRankDisplay}</Text>
+                </View>
                 <Text style={styles.headerTitle}>Classificação</Text>
-                <View style={{ width: 24 }} />
+                <TouchableOpacity onPress={() => navigation.navigate('Missions')} style={styles.missionsButton}>
+                    <Ionicons name="calendar-outline" size={28} color={theme.colors.textPrimary} />
+                </TouchableOpacity>
             </View>
 
             <View style={styles.filterContainer}>
@@ -152,14 +157,29 @@ const styles = StyleSheet.create({
         paddingHorizontal: theme.spacing.lg,
         paddingVertical: theme.spacing.md,
     },
-    backButton: {
-        padding: theme.spacing.xs,
-    },
     headerTitle: {
         fontSize: theme.fontSizes.xl,
-        fontFamily: theme.fonts.bold,
+        fontFamily: theme.fonts.title,
         color: theme.colors.textPrimary,
-        fontWeight: '700',
+    },
+    headerRankContainer: {
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: theme.spacing.sm,
+        paddingVertical: 6,
+        borderRadius: theme.radius.md,
+        minWidth: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerRankText: {
+        fontFamily: theme.fonts.bold,
+        color: theme.colors.primary,
+        fontSize: theme.fontSizes.md,
+    },
+    missionsButton: {
+        padding: theme.spacing.xs,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     filterContainer: {
         flexDirection: 'row',
