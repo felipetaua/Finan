@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
@@ -6,10 +6,28 @@ import { theme } from '../../theme/theme';
 import HomeHeader from '../../components/home/HomeHeader';
 import SectionBanner from '../../components/home/SectionBanner';
 import TrailNode from '../../components/home/TrailNode';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../../services/firebaseConfig';
 
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
-  const animation = React.createRef(null);
+  const animation = React.useRef(null);
+  const [streak, setStreak] = useState(0);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const docRef = doc(db, 'users', user.uid, 'gamification', 'streak');
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            setStreak(data.currentStreak || 0);
+        }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const trailData = [
     { id: 1, type: 'star', color: '#FFC800', status: 'completed', position: 0 },
@@ -23,7 +41,7 @@ const HomeScreen = () => {
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <HomeHeader streak={0} coins={132} hearts={1} />
+      <HomeHeader streak={streak} coins={132} hearts={1} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <SectionBanner 
