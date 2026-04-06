@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 import LottieView from 'lottie-react-native';
+import StreakModal from './StreakModal';
 
 
 const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isStreakModalVisible, setIsStreakModalVisible] = useState(false);
     
     const courses = [
         { name: "Pscologia do Dinheiro", locked: false },
@@ -29,10 +31,24 @@ const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
                 </TouchableOpacity>
                 
                 <View style={styles.statsContainer}>
-                    <View style={styles.statItem}>
-                        <MaterialCommunityIcons name="fire" size={24} color={streak > 0 ? "#FF9600" : "#E5E5E5"} />
+                    <TouchableOpacity 
+                        style={styles.statItem} 
+                        onPress={() => setIsStreakModalVisible(true)}
+                    >
+                        {streak > 0 ? (
+                            <View style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}>
+                                <LottieView
+                                    autoPlay
+                                    loop={true}
+                                    style={{ width: 64, height: 64, transform: [{ scale: 0.4 }] }}
+                                    source={require('../../assets/lottie/streak.json')}
+                                />
+                            </View>
+                        ) : (
+                            <MaterialCommunityIcons name="fire" size={24} color="#E5E5E5" />
+                        )}
                         <Text style={[styles.statText, { color: streak > 0 ? "#FF9600" : "#AFAFAF" }]}>{streak}</Text>
-                    </View>
+                    </TouchableOpacity>
                     <View style={styles.statItem}>
                         <MaterialCommunityIcons name="hexagon-multiple" size={24} color="#1CB0F6" />
                         <Text style={[styles.statText, { color: '#1CB0F6' }]}>{coins}</Text>
@@ -75,6 +91,11 @@ const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
                     </ScrollView>
                 </View>
             )}
+
+            <StreakModal 
+                visible={isStreakModalVisible} 
+                onClose={() => setIsStreakModalVisible(false)} 
+            />
         </View>
     );
 };
