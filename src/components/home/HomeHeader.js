@@ -4,11 +4,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 import LottieView from 'lottie-react-native';
 import StreakModal from './StreakModal';
+import ShopModal from './ShopModal';
 
 
 const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isStreakModalVisible, setIsStreakModalVisible] = useState(false);
+    const [isShopModalVisible, setIsShopModalVisible] = useState(false);
     
     const courses = [
         { name: "Pscologia do Dinheiro", locked: false },
@@ -49,10 +51,21 @@ const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
                         )}
                         <Text style={[styles.statText, { color: streak > 0 ? "#FF9600" : "#AFAFAF" }]}>{streak}</Text>
                     </TouchableOpacity>
-                    <View style={styles.statItem}>
-                        <MaterialCommunityIcons name="hexagon-multiple" size={24} color="#1CB0F6" />
+                    <TouchableOpacity 
+                        style={styles.statItem}
+                        onPress={() => setIsShopModalVisible(true)}
+                    >
+                        <View style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}>
+                            <LottieView
+                                autoPlay
+                                loop={true}
+                                style={{ width: 32, height: 32 }}
+                                source={require('../../assets/lottie/Diamond-azul.json')}
+                            />
+                        </View>
+                        
                         <Text style={[styles.statText, { color: '#1CB0F6' }]}>{coins}</Text>
-                    </View>
+                    </TouchableOpacity>
                     <View style={styles.statItem}>
                         <MaterialCommunityIcons name="heart" size={24} color="#FF4B4B" />
                         <Text style={[styles.statText, { color: '#FF4B4B' }]}>{hearts}</Text>
@@ -95,6 +108,12 @@ const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
             <StreakModal 
                 visible={isStreakModalVisible} 
                 onClose={() => setIsStreakModalVisible(false)} 
+            />
+
+            <ShopModal
+                visible={isShopModalVisible}
+                onClose={() => setIsShopModalVisible(false)}
+                coins={coins}
             />
         </View>
     );
