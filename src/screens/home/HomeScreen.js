@@ -13,24 +13,45 @@ const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const animation = React.useRef(null);
   const [streak, setStreak] = useState(0);
+  const [coins, setCoins] = useState(0);
 
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
 
-    const docRef = doc(db, 'users', user.uid, 'gamification', 'streak');
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    // Load Streak
+    const streakRef = doc(db, 'users', user.uid, 'gamification', 'streak');        
+    const unsubscribeStreak = onSnapshot(streakRef, (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
             setStreak(data.currentStreak || 0);
         }
     });
 
-    return () => unsubscribe();
+    // Load Coins 
+    const economyRef = doc(db, 'users', user.uid, 'gamification', 'economy');        
+    const unsubscribeEconomy = onSnapshot(economyRef, async (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            setCoins(data.coins || 0);
+        } else {
+            // Initialize economy doc if it doesn't exist
+            const { setDoc } = await import('firebase/firestore');
+            await setDoc(economyRef, {
+                coins: 25, // starting coins
+                lastUpdated: new Date().toISOString()
+            });
+            setCoins(25);
+        }
+    });
+
+    return () => {
+      unsubscribeStreak();
+      unsubscribeEconomy();
+    };
   }, []);
 
   const trailData = [
-    { id: 1, type: 'star', color: '#FFC800', status: 'completed', position: 0 },
     { id: 2, type: 'icon', color: '#1CB0F6', status: 'upcoming', position: 50, icon: 'dumbbell' },
     { id: 3, type: 'icon', color: '#1CB0F6', status: 'current', position: 80, icon: 'headphones' },
     { id: 4, type: 'star', color: '#1CB0F6', status: 'upcoming', position: 50 },
@@ -41,7 +62,7 @@ const HomeScreen = () => {
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <HomeHeader streak={streak} coins={132} hearts={1} />
+      <HomeHeader streak={streak} coins={coins} hearts={1} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <SectionBanner 
