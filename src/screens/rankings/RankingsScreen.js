@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Image, TouchableOpacity, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import LottieView from 'lottie-react-native';
 import { theme } from '../../theme/theme';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../../services/firebaseConfig';
@@ -11,6 +13,18 @@ const RankingsScreen = ({ navigation }) => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('Todos'); // 'Diário', 'Mensal', 'Todos'
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+
+    useEffect(() => {
+        const checkFirstAccess = async () => {
+            if (!auth.currentUser) return;
+            const hasAccessed = await AsyncStorage.getItem(`@rankings_accessed_${auth.currentUser.uid}`);
+            if (!hasAccessed) {
+                setShowWelcomeModal(true);
+            }
+        };
+        checkFirstAccess();
+    }, []);
 
     useEffect(() => {
         const usersRef = collection(db, 'users');
@@ -90,6 +104,13 @@ const RankingsScreen = ({ navigation }) => {
         );
     };
 
+    const handleParticipate = async () => {
+        if (auth.currentUser) {
+            await AsyncStorage.setItem(`@rankings_accessed_${auth.currentUser.uid}`, 'true');
+        }
+        setShowWelcomeModal(false);
+    };
+
     return (
         <View style={[styles.safeArea, { paddingTop: insets.top }]}>
             <View style={styles.header}>
@@ -141,6 +162,32 @@ const RankingsScreen = ({ navigation }) => {
                     />
                 </View>
             )}
+
+            <Modal
+                visible={showWelcomeModal}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => {}}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <LottieView
+                            source={require('../../assets/lottie/splash-rocket-person.json')}
+                            autoPlay
+                            loop
+                            style={styles.modalAlertLottie}
+                        />
+                        <Text style={styles.modalTitle}>Bem-vindo ao Ranking!</Text>
+                        <Text style={styles.modalSubtitle}>
+                            Ganhe XP realizando missões, registre suas finanças e dispute as melhores posições para provar quem manda bem no dinheiro!
+                        </Text>
+                        
+                        <TouchableOpacity style={styles.participateButton} onPress={handleParticipate}>
+                            <Text style={styles.participateButtonText}>Quero Participar!</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -363,6 +410,55 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: theme.spacing.lg,
+    },
+    modalContainer: {
+        width: '100%',
+        backgroundColor: '#FFF',
+        borderRadius: theme.radius.xl,
+        padding: theme.spacing.xl,
+        alignItems: 'center',
+        boxShadow: '0px 4px 10px rgba(0,0,0,0.15)',
+        elevation: 5,
+        borderRadius: theme.radius.lg,
+    },
+    modalAlertLottie: {
+        width: 150,
+        height: 150,
+        marginBottom: theme.spacing.md,
+    },
+    modalTitle: {
+        fontSize: theme.fontSizes.xl,
+        fontFamily: theme.fonts.title,
+        color: theme.colors.primary,
+        marginBottom: theme.spacing.sm,
+        textAlign: 'center',
+    },
+    modalSubtitle: {
+        fontSize: theme.fontSizes.md,
+        fontFamily: theme.fonts.regular,
+        color: theme.colors.textSecondary,
+        textAlign: 'center',
+        marginBottom: theme.spacing.xl,
+        lineHeight: 22,
+    },
+    participateButton: {
+        width: '100%',
+        backgroundColor: theme.colors.primary,
+        paddingVertical: theme.spacing.md,
+        borderRadius: theme.radius.lg,
+        alignItems: 'center',
+    },
+    participateButtonText: {
+        color: '#FFF',
+        fontFamily: theme.fonts.bold,
+        fontSize: theme.fontSizes.md,
     }
 });
 
