@@ -146,7 +146,7 @@ const StreakModal = ({ visible, onClose }) => {
                         <MaterialCommunityIcons name="close" size={24} color={theme.colors.textPrimary} />
                     </TouchableOpacity>
 
-                    <Text style={styles.headerTitle} pointerEvents="none">Sequência</Text>
+                    <Text style={[styles.headerTitle, { pointerEvents: 'none' }]}>Sequência</Text>
                     
                     <View style={styles.streakHeader}>
                         <View>
