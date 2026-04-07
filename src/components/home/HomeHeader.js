@@ -43,7 +43,7 @@ const HomeHeader = ({ streak = 0, coins = 0, hearts = 0, isPremium = false, next
                                 <LottieView
                                     autoPlay
                                     loop={true}
-                                    style={{ width: 64, height: 64, transform: [{ scale: 0.4 }] }}
+                                    style={{ width: 64, height: 64, transform: [{ scale: 0.7 }] }}
                                     source={require('../../assets/lottie/streak.json')}
                                 />
                             </View>
@@ -60,7 +60,7 @@ const HomeHeader = ({ streak = 0, coins = 0, hearts = 0, isPremium = false, next
                             <LottieView
                                 autoPlay
                                 loop={true}
-                                style={{ width: 32, height: 32 }}
+                                style={{ width: 64, height: 64 , transform: [{ scale: 0.7 }]}}
                                 source={require('../../assets/lottie/Diamond-azul.json')}
                             />
                         </View>

@@ -160,7 +160,7 @@ const StreakModal = ({ visible, onClose }) => {
                                 autoPlay
                                 loop={true}
                                 resizeMode="contain"
-                                style={{ width: 64, height: 64 }}
+                                style={{ width: 64, height: 64 , transform: [{ scale: 2 }]}}
                                 source={require('../../assets/lottie/streak.json')}
                             />
                         ) : (
