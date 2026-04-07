@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import { FontAwesome6, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 
-const TrailNode = ({ node }) => {
+const TrailNode = ({ node, onPress }) => {
     const isLocked = node.status === 'locked';
     const isCurrent = node.status === 'current';
     
@@ -15,9 +15,11 @@ const TrailNode = ({ node }) => {
                     <View style={styles.startArrow} />
                 </View>
             )}
-            <TouchableOpacity 
+            <TouchableOpacity
+                onPress={() => onPress && onPress(node)}
+                activeOpacity={0.7}
                 style={[
-                    styles.node, 
+                    styles.node,
                     { backgroundColor: node.color },
                     Platform.select({
                         ios: { shadowColor: node.color || '#E5E5E5' },

@@ -1,0 +1,160 @@
+{
+  "trilha": {
+    "nome": "Organizar a Vida Financeira",
+    "estilo": "Gamificado (Micro-learning)",
+    "recompensas": ["XP", "Moedas de Liberdade", "Ofensiva"],
+    "secoes": [
+        {
+            "id": 1,
+            "titulo": "Seção 1: Iniciação e Despertar",
+            "unidades": [
+            {
+                "id": "u1_1",
+                "titulo": "Unidade 1: Onde o Dinheiro Foge?",
+                "licoes": [
+                {
+                    "tipo": "teoria_curta",
+                    "texto": "O dinheiro não some, ele é gasto. Se você não sabe para onde ele vai, ele decide o caminho sozinho.",
+                    "pergunta": "Qual é a sensação mais comum ao olhar o extrato no fim do mês?"
+                },
+                {
+                    "tipo": "escolha_multipla",
+                    "opcoes": [
+                    {"texto": "Controle total", "correta": false},
+                    {"texto": "Onde foi que eu gastei isso?", "correta": true},
+                    {"texto": "Riqueza instantânea", "correta": false}
+                    ],
+                    "feedback_vitoria": "Exato! Esse é o 'Ponto Cego'. Vamos eliminá-lo."
+                },
+                {
+                    "tipo": "pratica_real",
+                    "tarefa": "Abra o extrato dos últimos 3 dias e encontre um gasto 'inútil'.",
+                    "recompensa_xp": 50
+                }
+            ]
+        },
+        {
+        "id": "u1_2",
+        "titulo": "Unidade 2: Necessidade vs. Desejo",
+        "licoes": [
+            {
+                "tipo": "desafio_escolha",
+                "contexto": "Você está cansado e vê um anúncio de delivery com 50% de desconto, mas já tem comida em casa.",
+                "pergunta": "O que o seu 'Eu do Futuro' preferiria?",
+                "opcoes": [
+                {"texto": "Comprar para relaxar agora", "pontos": -10},
+                {"texto": "Comer em casa e guardar o valor", "pontos": 20}
+                ]
+            }
+        ]
+        },
+        {
+        "id": "u1_3",
+        "titulo": "Unidade 3: A Primeira Regra de Ouro",
+        "licoes": [
+            {
+                "tipo": "teoria_curta",
+                "texto": "Pague-se primeiro. Antes das contas, 5% do que entra é para o seu futuro.",
+                "pergunta": "Qual o destino desses 5%?"
+            },
+            {
+                "tipo": "pratica_real",
+                "tarefa": "Defina um dia fixo no mês para 'se pagar' antes de qualquer boleto.",
+                "recompensa_xp": 100
+            }
+        ]
+        }
+    ]
+    },
+    {
+    "id": 2,
+    "titulo": "Seção 2: Blindagem Mental",
+    "unidades": [
+        {
+        "id": "u2_1",
+        "titulo": "Unidade 1: O Vírus da Comparação",
+        "licoes": [
+            {
+            "tipo": "reflexao_honesta",
+            "texto": "Muitas compras servem para provar algo a quem não se importa.",
+            "pergunta": "Qual objeto você comprou apenas para 'estar no nível' dos outros?",
+            "campo_texto": true
+            }
+        ]
+        },
+        {
+        "id": "u2_2",
+        "titulo": "Unidade 2: A Matemática da Felicidade",
+        "licoes": [
+            {
+            "tipo": "escolha_multipla",
+            "texto": "Felicidade = Realidade - Expectativa. Se sua expectativa sobe com seu salário, você terá:",
+            "opcoes": [
+                {"texto": "Mais alegria", "correta": false},
+                {"texto": "Eterna insatisfação", "correta": true}
+            ]
+            }
+        ]
+        },
+        {
+        "id": "u2_3",
+        "titulo": "Unidade 3: Definindo o 'Basta'",
+        "licoes": [
+            {
+            "tipo": "pratica_real",
+            "tarefa": "Escreva o valor que tornaria sua vida confortável, sem excessos ostentativos.",
+            "recompensa_xp": 150
+            }
+        ]
+        }
+    ]
+    },
+    {
+    "id": 3,
+    "titulo": "Seção 3: Liberdade e Tempo",
+    "unidades": [
+        {
+        "id": "u3_1",
+        "titulo": "Unidade 1: Preço em Horas",
+        "licoes": [
+            {
+            "tipo": "calculo_gamificado",
+            "texto": "Se você ganha R$ 20 por hora, um jantar de R$ 200 custa:",
+            "opcoes": [
+                {"texto": "10 horas de vida", "correta": true},
+                {"texto": "Apenas dinheiro", "correta": false}
+            ]
+            }
+        ]
+        },
+        {
+        "id": "u3_2",
+        "titulo": "Unidade 2: A Reserva de Paz",
+        "licoes": [
+            {
+            "tipo": "teoria_curta",
+            "texto": "Ter 3 meses de custo de vida guardados permite que você diga 'não' a desaforos profissionais.",
+            "pergunta": "A reserva de emergência é para imprevistos ou para liberdade?",
+            "opcoes": [
+                {"texto": "Ambos", "correta": true}
+            ]
+            }
+        ]
+            },
+                {
+                "id": "u3_3",
+                "titulo": "Unidade 3: Mestre das Próprias Regras",
+                    "licoes": [
+                        {
+                        "id": "desafio_final",
+                        "tipo": "compromisso_final",
+                        "texto": "Parabéns! Você concluiu a iniciação. Qual será sua nova regra inviolável?",
+                        "acao": "Assinar o contrato de compromisso com o App."
+                        }
+                    ]
+                    }
+                ]
+            }
+        ]
+    }
+}

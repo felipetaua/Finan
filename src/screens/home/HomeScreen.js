@@ -6,16 +6,64 @@ import { theme } from '../../theme/theme';
 import HomeHeader from '../../components/home/HomeHeader';
 import SectionBanner from '../../components/home/SectionBanner';
 import TrailNode from '../../components/home/TrailNode';
+import LessonModal from '../../components/home/LessonModal';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../../services/firebaseConfig';
+const trailDataRaw = require('./test.json');
+
+let globalNodeIndex = 0;
+const totalNodes = trailDataRaw.trilha.secoes.reduce((acc, sec) => acc + sec.unidades.length, 0);
+
+const sectionsData = trailDataRaw.trilha.secoes.map((secao) => {
+    return {
+        id: secao.id,
+        titulo: secao.titulo,
+        unidades: secao.unidades.map((unidade) => {
+            const index = globalNodeIndex++;
+            const positions = [0, 40, 70, 30, -20, -60, -80, -40];
+            
+            let status = 'locked';
+            let color = '#E5E5E5';
+            let icon = 'book-open-outline';
+            let type = 'icon';
+
+            if (index === 0) {
+                status = 'completed';
+                color = '#FFC800';
+                icon = 'star';
+                type = 'star';
+            } else if (index === 1) {
+                status = 'current';
+                color = '#1CB0F6';
+                icon = 'book-open-page-variant';
+            } else if (index === totalNodes - 1) {
+                icon = 'treasure-chest';
+                type = 'treasure';
+            }
+
+            return {
+                id: unidade.id,
+                title: index === 0 ? trailDataRaw.trilha.nome : undefined,
+                description: unidade.titulo,
+                type: type,
+                color: color,
+                status: status,
+                position: positions[index % positions.length],
+                icon: icon,
+                lessonData: unidade
+            };
+        })
+    };
+});
 
 const HomeScreen = () => {
-  const insets = useSafeAreaInsets();
-  const animation = React.useRef(null);
-  const [streak, setStreak] = useState(0);
-  const [coins, setCoins] = useState(0);
-  const [hearts, setHearts] = useState(6);
-  const [isPremium, setIsPremium] = useState(false);
+    const insets = useSafeAreaInsets();
+    const animation = React.useRef(null);
+    const [streak, setStreak] = useState(0);
+    const [coins, setCoins] = useState(0);
+    const [hearts, setHearts] = useState(6);
+    const [selectedLesson, setSelectedLesson] = useState(null);
+    const [isPremium, setIsPremium] = useState(false);
   const [nextEnergyTimeStr, setNextEnergyTimeStr] = useState("30:00");
 
   useEffect(() => {
@@ -121,14 +169,6 @@ const HomeScreen = () => {
     };
   }, []);
 
-  const trailData = [
-    { id: 2, type: 'icon', color: '#1CB0F6', status: 'upcoming', position: 50, icon: 'dumbbell' },
-    { id: 3, type: 'icon', color: '#1CB0F6', status: 'current', position: 80, icon: 'headphones' },
-    { id: 4, type: 'star', color: '#1CB0F6', status: 'upcoming', position: 50 },
-    { id: 5, type: 'icon', color: '#E5E5E5', status: 'locked', position: -40, icon: 'video' },
-    { id: 6, type: 'icon', color: '#E5E5E5', status: 'locked', position: -80, icon: 'microphone' },
-    { id: 7, type: 'star', color: '#E5E5E5', status: 'locked', position: -40 },
-  ];
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
@@ -141,26 +181,43 @@ const HomeScreen = () => {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <SectionBanner 
-            section={2} 
-            unit={10} 
-            description="Aprenda sobre juros e investimentos" 
-        />
-        <View style={styles.trailContainer}>
-            <LottieView
-                autoPlay
-                loop={true}
-                ref={animation}
-                style={{
-                    width: 150,
-                    height: 150,
-                }}
-                // Caminho para o seu arquivo json
-                source={require('../../assets/lottie/loading-coin.json')}
-            />
-            {trailData.map(node => <TrailNode key={node.id} node={node} />)}
-        </View>
-      </ScrollView>
+          {sectionsData.map((section, index) => {
+            const isFirstGroup = index === 0;
+
+            return (
+              <View key={`section-${section.id}`}>
+                <SectionBanner
+                    section={index + 1}
+                    unit={section.unidades.length}
+                    description={section.titulo}
+                />
+                <View style={styles.trailContainer}>
+                    {isFirstGroup && (
+                        <LottieView
+                            autoPlay
+                            loop={true}
+                            style={{ width: 150, height: 150 }}
+                            source={require('../../assets/lottie/loading-coin.json')}
+                        />
+                    )}
+                    {section.unidades.map(node => (
+                        <TrailNode 
+                            key={node.id} 
+                            node={node} 
+                            onPress={(selectedNode) => setSelectedLesson(selectedNode.lessonData)}
+                        />
+                    ))}
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+
+      <LessonModal
+        visible={!!selectedLesson}
+        onClose={() => setSelectedLesson(null)}
+        lessonData={selectedLesson}
+      />
     </View>
   );
 };
