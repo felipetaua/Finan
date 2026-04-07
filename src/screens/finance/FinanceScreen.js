@@ -169,7 +169,7 @@ const FinanceScreen = () => {
       let transList = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })).filter(item => !(item?.isDeleted === true || item?.isDeleted === 'true' || item?.deletedAt != null));
 
       // Ordenação local (descendente por data)
       transList.sort((a, b) => {

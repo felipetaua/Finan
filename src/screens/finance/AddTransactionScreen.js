@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
     View, 
     Text, 
@@ -54,13 +54,17 @@ const AddTransactionScreen = () => {
     const [isFixed, setIsFixed] = useState(false);
     const [paymentReminder, setPaymentReminder] = useState(false);
     const [details, setDetails] = useState('');
+    const isSubmittingRef = useRef(false);
 
     const handleSave = async () => {
+        if (isSubmittingRef.current || loading) return;
+
         if (!amount || !description || !selectedCategory) {
             Alert.alert('Ops!', 'Por favor, preencha o valor, a descrição e escolha uma categoria.');
             return;
         }
 
+        isSubmittingRef.current = true;
         setLoading(true);
         try {
             const user = auth.currentUser;
@@ -99,6 +103,7 @@ const AddTransactionScreen = () => {
             console.error("Erro ao salvar transação:", error);
             Alert.alert('Erro', 'Não foi possível salvar a transação. Tente novamente.');
         } finally {
+            isSubmittingRef.current = false;
             setLoading(false);
         }
     };

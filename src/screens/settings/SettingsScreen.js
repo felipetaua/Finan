@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
@@ -10,6 +10,8 @@ import { CURRENCY_OPTIONS, useCurrency } from '../../context/CurrencyContext';
 const SettingsScreen = ({ navigation }) => {
     const { selectedCurrency, setCurrency } = useCurrency();
     const [isCurrencyModalVisible, setIsCurrencyModalVisible] = React.useState(false);
+    const [isLogoutModalVisible, setIsLogoutModalVisible] = React.useState(false);
+    const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
     const handleCurrencyChange = () => {
         setIsCurrencyModalVisible(true);
@@ -21,18 +23,21 @@ const SettingsScreen = ({ navigation }) => {
     };
 
     const handleLogout = () => {
-        Alert.alert(
-            "Sair do App",
-            "Deseja mesmo sair da sua conta?",
-            [
-                { text: "Cancelar", style: "cancel" },
-                { 
-                    text: "Sair", 
-                    style: "destructive", 
-                    onPress: () => signOut(auth).catch(error => console.log('Erro ao sair:', error)) 
-                }
-            ]
-        );
+        setIsLogoutModalVisible(true);
+    };
+
+    const confirmLogout = async () => {
+        if (isLoggingOut) return;
+
+        try {
+            setIsLoggingOut(true);
+            await signOut(auth);
+            setIsLogoutModalVisible(false);
+        } catch (error) {
+            console.log('Erro ao sair:', error);
+        } finally {
+            setIsLoggingOut(false);
+        }
     };
 
     const SettingItem = ({ icon, label, onPress, value, type = 'chevron', color = theme.colors.textPrimary, isMaterial = false }) => {
@@ -176,6 +181,42 @@ const SettingsScreen = ({ navigation }) => {
                         >
                             <Text style={styles.modalCancelText}>Fechar</Text>
                         </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal
+                visible={isLogoutModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIsLogoutModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={styles.modalDismissArea}
+                        activeOpacity={1}
+                        onPress={() => setIsLogoutModalVisible(false)}
+                    />
+                    <View style={styles.modalCard}>
+                        <Text style={styles.modalTitle}>Sair do app</Text>
+                        <Text style={styles.modalSubtitle}>Deseja mesmo sair da sua conta?</Text>
+
+                        <View style={styles.logoutModalActions}>
+                            <TouchableOpacity
+                                style={styles.logoutCancelButton}
+                                onPress={() => setIsLogoutModalVisible(false)}
+                                disabled={isLoggingOut}
+                            >
+                                <Text style={styles.logoutCancelText}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.logoutConfirmButton}
+                                onPress={confirmLogout}
+                                disabled={isLoggingOut}
+                            >
+                                <Text style={styles.logoutConfirmText}>Sair</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>
@@ -343,6 +384,38 @@ const styles = StyleSheet.create({
     },
     modalCancelText: {
         color: '#111827',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    logoutModalActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 10,
+        marginTop: 6,
+    },
+    logoutCancelButton: {
+        height: 42,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logoutCancelText: {
+        color: '#111827',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    logoutConfirmButton: {
+        height: 42,
+        paddingHorizontal: 18,
+        borderRadius: 12,
+        backgroundColor: '#EF4444',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logoutConfirmText: {
+        color: '#FFF',
         fontSize: 14,
         fontWeight: '700',
     },

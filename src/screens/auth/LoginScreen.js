@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import { FontAwesome } from '@expo/vector-icons';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { auth, db, app } from '../../services/firebaseConfig';
 import { 
     useCreateUserWithEmailAndPassword, 
@@ -30,6 +30,7 @@ export default function LoginScreen({ navigation }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const [request, response, promptAsync] = Google.useAuthRequest({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
@@ -174,6 +175,31 @@ export default function LoginScreen({ navigation }) {
 
     const isLoading = loadingCreate || loadingSignIn;
 
+    const getAuthErrorMessage = () => {
+        const error = isLogin ? errorSignIn : errorCreate;
+        if (!error) return null;
+
+        const code = error.code || '';
+
+        if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+            return 'Senha incorreta. Tente novamente.';
+        }
+        if (code === 'auth/user-not-found') {
+            return 'Conta não encontrada para este email.';
+        }
+        if (code === 'auth/invalid-email') {
+            return 'Email inválido.';
+        }
+        if (code === 'auth/email-already-in-use') {
+            return 'Este email já está em uso.';
+        }
+        if (code === 'auth/weak-password') {
+            return 'A senha precisa ter pelo menos 6 caracteres.';
+        }
+
+        return 'Não foi possível autenticar. Verifique os dados e tente novamente.';
+    };
+
     return (
         <View style={[styles.safeArea, { paddingTop: insets.top }]}>
             <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -218,12 +244,20 @@ export default function LoginScreen({ navigation }) {
                         placeholder="Senha"
                         value={password}
                         onChangeText={setPassword}
-                        secureTextEntry
+                        secureTextEntry={!showPassword}
+                        rightIcon={
+                            <Ionicons
+                                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                                size={20}
+                                color={theme.colors.textSecondary}
+                            />
+                        }
+                        onRightIconPress={() => setShowPassword((prev) => !prev)}
                     />
 
                     {errorCreate || errorSignIn ? (
                         <Text style={styles.errorText}>
-                            {errorCreate?.message || errorSignIn?.message}
+                            {getAuthErrorMessage()}
                         </Text>
                     ) : null}
 

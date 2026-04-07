@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { auth, db } from '../../services/firebaseConfig';
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useCurrency } from '../../context/CurrencyContext';
 
 const TransactionsScreen = () => {
@@ -25,6 +25,13 @@ const TransactionsScreen = () => {
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [editAmount, setEditAmount] = useState('');
+    const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState({ type: null, ids: [] });
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const isTransactionDeleted = (item) => {
+        return item?.isDeleted === true || item?.isDeleted === 'true' || item?.deletedAt != null;
+    };
 
     const toggleSelection = (id) => {
         setSelectedIds(prev => prev.includes(id) 
@@ -33,35 +40,24 @@ const TransactionsScreen = () => {
         );
     };
 
+    const deleteTransactionById = async (id) => {
+        const transRef = doc(db, "transactions", id);
+
+        try {
+
+            await updateDoc(transRef, {
+                isDeleted: true,
+                deletedAt: serverTimestamp(),
+            });
+        } catch (softDeleteError) {
+            await deleteDoc(transRef);
+        }
+    };
+
     const handleBulkDelete = () => {
         if (selectedIds.length === 0) return;
-        Alert.alert(
-            "Excluir selecionadas",
-            `Deseja excluir as ${selectedIds.length} transações selecionadas?`,
-            [
-                { text: "Cancelar", style: "cancel" },
-                { 
-                    text: "Excluir", 
-                    style: "destructive", 
-                    onPress: async () => {
-                        try {
-                            setLoading(true);
-                            for (const id of selectedIds) {
-                                const transRef = doc(db, "transactions", id);
-                                await deleteDoc(transRef);
-                            }
-                            setSelectedIds([]);
-                            setIsSelectionMode(false);
-                            setLoading(false);
-                        } catch (error) {
-                            console.error("Error bulk deleting transactions:", error);
-                            Alert.alert("Erro", "Não foi possível excluir as transações.");
-                            setLoading(false);
-                        }
-                    }
-                }
-            ]
-        );
+        setDeleteTarget({ type: 'bulk', ids: [...selectedIds] });
+        setConfirmDeleteVisible(true);
     };
 
     const handleEditPress = (item) => {
@@ -84,29 +80,45 @@ const TransactionsScreen = () => {
         }
     };
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!selectedTransaction) return;
-        Alert.alert(
-            "Excluir transação",
-            "Tem certeza que deseja excluir esta transação?",
-            [
-                { text: "Cancelar", style: "cancel" },
-                { 
-                    text: "Excluir", 
-                    style: "destructive", 
-                    onPress: async () => {
-                        try {
-                            const transRef = doc(db, "transactions", selectedTransaction.id);
-                            await deleteDoc(transRef);
-                            setEditModalVisible(false);
-                        } catch (error) {
-                            console.error("Error deleting transaction:", error);
-                            Alert.alert("Erro", "Não foi possível excluir a transação.");
-                        }
-                    }
-                }
-            ]
-        );
+        setDeleteTarget({ type: 'single', ids: [selectedTransaction.id] });
+        setConfirmDeleteVisible(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteTarget.ids.length || isDeleting) return;
+
+        try {
+            setIsDeleting(true);
+            await Promise.all(deleteTarget.ids.map((id) => deleteTransactionById(id)));
+
+            // Remove localmente para feedback imediato, sem esperar snapshot.
+            setTransactions((prevSections) =>
+                prevSections
+                    .map((section) => ({
+                        ...section,
+                        data: section.data.filter((item) => !deleteTarget.ids.includes(item.id)),
+                    }))
+                    .filter((section) => section.data.length > 0)
+            );
+
+            if (deleteTarget.type === 'bulk') {
+                setSelectedIds([]);
+                setIsSelectionMode(false);
+            } else if (selectedTransaction && deleteTarget.ids.includes(selectedTransaction.id)) {
+                setSelectedTransaction(null);
+            }
+
+            setEditModalVisible(false);
+            setConfirmDeleteVisible(false);
+            setDeleteTarget({ type: null, ids: [] });
+        } catch (error) {
+            console.error('Error deleting transaction(s):', error);
+            Alert.alert('Erro', `Não foi possível excluir. ${error?.message || ''}`.trim());
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     useEffect(() => {
@@ -121,7 +133,7 @@ const TransactionsScreen = () => {
             let transList = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
-            }));
+            })).filter(item => !isTransactionDeleted(item));
 
             // Group by date
             const grouped = transList.reduce((acc, obj) => {
@@ -173,7 +185,7 @@ const TransactionsScreen = () => {
                     styles.transactionCard, 
                     isSelected && { borderColor: theme.colors.primary, borderWidth: 1.5, backgroundColor: '#F0F7FF' }
                 ]}
-                onPress={() => isSelectionMode ? toggleSelection(item.id) : null}
+                onPress={() => isSelectionMode ? toggleSelection(item.id) : handleEditPress(item)}
                 onLongPress={() => isSelectionMode ? null : handleEditPress(item)}
                 activeOpacity={0.7}
             >
@@ -352,6 +364,45 @@ const TransactionsScreen = () => {
                         </View>
                     </View>
                 </TouchableOpacity>
+            </Modal>
+
+            <Modal
+                visible={confirmDeleteVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setConfirmDeleteVisible(false)}
+            >
+                <View style={styles.confirmOverlay}>
+                    <View style={styles.confirmCard}>
+                        <Text style={styles.confirmTitle}>Tem certeza que quer apagar?</Text>
+                        <Text style={styles.confirmText}>
+                            {deleteTarget.type === 'bulk'
+                                ? `Isso vai apagar ${deleteTarget.ids.length} transações.`
+                                : 'Essa transação será removida da sua lista.'}
+                        </Text>
+
+                        <View style={styles.confirmActions}>
+                            <TouchableOpacity
+                                style={styles.confirmCancelBtn}
+                                onPress={() => setConfirmDeleteVisible(false)}
+                                disabled={isDeleting}
+                            >
+                                <Text style={styles.confirmCancelText}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.confirmDeleteBtn}
+                                onPress={confirmDelete}
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <Text style={styles.confirmDeleteText}>Confirmar</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
             </Modal>
         </View>
     );
@@ -663,6 +714,58 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#FFF',
+    },
+    confirmOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+    },
+    confirmCard: {
+        width: '100%',
+        maxWidth: 380,
+        borderRadius: 16,
+        backgroundColor: '#FFF',
+        padding: 18,
+    },
+    confirmTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#0F172A',
+        marginBottom: 8,
+    },
+    confirmText: {
+        fontSize: 14,
+        color: '#475569',
+        marginBottom: 16,
+    },
+    confirmActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 10,
+    },
+    confirmCancelBtn: {
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+        backgroundColor: '#F1F5F9',
+    },
+    confirmCancelText: {
+        color: '#334155',
+        fontWeight: '600',
+    },
+    confirmDeleteBtn: {
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+        backgroundColor: '#DC2626',
+        minWidth: 92,
+        alignItems: 'center',
+    },
+    confirmDeleteText: {
+        color: '#FFF',
+        fontWeight: '700',
     },
 });
 
