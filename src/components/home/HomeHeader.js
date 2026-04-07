@@ -3,16 +3,21 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 import LottieView from 'lottie-react-native';
+import StreakModal from './StreakModal';
+import ShopModal from './ShopModal';
+import EnergyModal from './EnergyModal';
 
-
-const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
+const HomeHeader = ({ streak = 0, coins = 0, hearts = 0, isPremium = false, nextEnergyTime }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    
+    const [isStreakModalVisible, setIsStreakModalVisible] = useState(false);    
+    const [isShopModalVisible, setIsShopModalVisible] = useState(false);        
+    const [isEnergyModalVisible, setIsEnergyModalVisible] = useState(false);
+
+
     const courses = [
-        { name: "Pscologia do Dinheiro", locked: false },
+        { name: "Organizar a vida financeira", locked: false },
         { name: "Aprender a Investir", locked: true },
         { name: "Controle Financeiro", locked: true },
-        { name: "Organizar a vida financeira", locked: true },
         { name: "Planejar aposentadoria", locked: true }
     ];
 
@@ -29,18 +34,43 @@ const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
                 </TouchableOpacity>
                 
                 <View style={styles.statsContainer}>
-                    <View style={styles.statItem}>
-                        <MaterialCommunityIcons name="fire" size={24} color={streak > 0 ? "#FF9600" : "#E5E5E5"} />
+                    <TouchableOpacity 
+                        style={styles.statItem} 
+                        onPress={() => setIsStreakModalVisible(true)}
+                    >
+                        {streak > 0 ? (
+                            <View style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}>
+                                <LottieView
+                                    autoPlay
+                                    loop={true}
+                                    style={{ width: 64, height: 64, transform: [{ scale: 0.7 }] }}
+                                    source={require('../../assets/lottie/streak.json')}
+                                />
+                            </View>
+                        ) : (
+                            <MaterialCommunityIcons name="fire" size={24} color="#E5E5E5" />
+                        )}
                         <Text style={[styles.statText, { color: streak > 0 ? "#FF9600" : "#AFAFAF" }]}>{streak}</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <MaterialCommunityIcons name="hexagon-multiple" size={24} color="#1CB0F6" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.statItem}
+                        onPress={() => setIsShopModalVisible(true)}
+                    >
+                        <View style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}>
+                            <LottieView
+                                autoPlay
+                                loop={true}
+                                style={{ width: 64, height: 64 , transform: [{ scale: 0.7 }]}}
+                                source={require('../../assets/lottie/Diamond-azul.json')}
+                            />
+                        </View>
+                        
                         <Text style={[styles.statText, { color: '#1CB0F6' }]}>{coins}</Text>
-                    </View>
-                    <View style={styles.statItem}>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.statItem} onPress={() => setIsEnergyModalVisible(true)}>
                         <MaterialCommunityIcons name="heart" size={24} color="#FF4B4B" />
                         <Text style={[styles.statText, { color: '#FF4B4B' }]}>{hearts}</Text>
-                    </View>
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -75,6 +105,25 @@ const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
                     </ScrollView>
                 </View>
             )}
+
+            <StreakModal 
+                visible={isStreakModalVisible} 
+                onClose={() => setIsStreakModalVisible(false)} 
+            />
+
+            <ShopModal
+                visible={isShopModalVisible}
+                onClose={() => setIsShopModalVisible(false)}
+                coins={coins}
+            />
+            <EnergyModal 
+                visible={isEnergyModalVisible}
+                onClose={() => setIsEnergyModalVisible(false)}
+                hearts={hearts}
+                maxHearts={6}
+                isPremium={isPremium}
+                nextEnergyTime={nextEnergyTime}
+            />
         </View>
     );
 };
