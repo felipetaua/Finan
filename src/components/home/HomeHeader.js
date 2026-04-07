@@ -5,18 +5,19 @@ import { theme } from '../../theme/theme';
 import LottieView from 'lottie-react-native';
 import StreakModal from './StreakModal';
 import ShopModal from './ShopModal';
+import EnergyModal from './EnergyModal';
 
-
-const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
+const HomeHeader = ({ streak = 0, coins = 0, hearts = 0, isPremium = false, nextEnergyTime }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isStreakModalVisible, setIsStreakModalVisible] = useState(false);
-    const [isShopModalVisible, setIsShopModalVisible] = useState(false);
-    
+    const [isStreakModalVisible, setIsStreakModalVisible] = useState(false);    
+    const [isShopModalVisible, setIsShopModalVisible] = useState(false);        
+    const [isEnergyModalVisible, setIsEnergyModalVisible] = useState(false);
+
+
     const courses = [
-        { name: "Pscologia do Dinheiro", locked: false },
+        { name: "Organizar a vida financeira", locked: false },
         { name: "Aprender a Investir", locked: true },
         { name: "Controle Financeiro", locked: true },
-        { name: "Organizar a vida financeira", locked: true },
         { name: "Planejar aposentadoria", locked: true }
     ];
 
@@ -66,10 +67,10 @@ const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
                         
                         <Text style={[styles.statText, { color: '#1CB0F6' }]}>{coins}</Text>
                     </TouchableOpacity>
-                    <View style={styles.statItem}>
+                    <TouchableOpacity style={styles.statItem} onPress={() => setIsEnergyModalVisible(true)}>
                         <MaterialCommunityIcons name="heart" size={24} color="#FF4B4B" />
                         <Text style={[styles.statText, { color: '#FF4B4B' }]}>{hearts}</Text>
-                    </View>
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -114,6 +115,14 @@ const HomeHeader = ({ streak = 0, coins = 0, hearts = 0 }) => {
                 visible={isShopModalVisible}
                 onClose={() => setIsShopModalVisible(false)}
                 coins={coins}
+            />
+            <EnergyModal 
+                visible={isEnergyModalVisible}
+                onClose={() => setIsEnergyModalVisible(false)}
+                hearts={hearts}
+                maxHearts={6}
+                isPremium={isPremium}
+                nextEnergyTime={nextEnergyTime}
             />
         </View>
     );
